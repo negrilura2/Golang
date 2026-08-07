@@ -1,0 +1,209 @@
+# tag_push自动部署准备阶段
+prepare: &prepare
+  script: |
+    CNB_BRANCH_ENV=${CNB_BRANCH%%-*}
+    CNB_VERSION=${CNB_BRANCH#*-}
+    IMAGE_TAG=${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/${CNB_BRANCH_ENV}:${CNB_VERSION}
+    printf "##[set-output cnb_branch_env=%s]\n" "$CNB_BRANCH_ENV"
+    printf "##[set-output cnb_version=%s]\n" "$CNB_VERSION"
+    printf "##[set-output image_tag=%s]\n" "$IMAGE_TAG"
+  exports:
+    cnb_branch_env: CNB_BRANCH_ENV
+    cnb_version: CNB_VERSION
+    image_tag: IMAGE_TAG
+
+# web按钮手动触发部署前置准备
+web_trigger_prepare: &web_prepare
+  script: |
+    CNB_BRANCH_ENV=${tag_name%%-*}
+    CNB_VERSION=${tag_name#*-}
+    # 示例：docker.cnb.cool/qingflyfei/edu.mall.backend/prod:1.6.6-f93d4e93
+    IMAGE_TAG=${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/${CNB_BRANCH_ENV}:${CNB_VERSION}
+    printf "##[set-output image_tag=%s]\n" "$IMAGE_TAG"
+    printf "##[set-output cnb_branch_env=%s]\n" "$CNB_BRANCH_ENV"
+  exports:
+    cnb_branch_env: CNB_BRANCH_ENV
+    image_tag: IMAGE_TAG
+
+
+# Docker build && Docker push
+build_push: &build_push
+  script: |
+    echo "build_push image_tag: $IMAGE_TAG, env: $CNB_BRANCH_ENV, version: $CNB_VERSION"
+    docker build -t $IMAGE_TAG .
+    docker push $IMAGE_TAG
+
+# 镜像更新
+update_image: &update_image
+  script: |
+    echo "deploy image_tag: $IMAGE_TAG, env: $CNB_BRANCH_ENV, version: $CNB_VERSION"
+    if [ "${CNB_BRANCH_ENV}" != "dev" ]; then
+      echo "⏸️ update_image 当前分支为 ${$CNB_BRANCH_ENV}，非dev分支，跳过自动部署"
+      echo "💡 update_image 只有dev分支会触发自动部署到服务器"
+      exit 0
+    fi
+    if [ ! -f docker-compose.yml ]; then
+      echo "❌ docker-compose.yml 文件不存在"
+      exit 1
+    fi
+
+    echo "当前分支: ${CNB_BRANCH_ENV}"
+    echo "原始docker-compose.yml内容:"
+    cat docker-compose.yml
+
+    # 使用sed替换镜像tag, image: docker.cnb.cool/qingflyfei/edu.mall.backend/dev:latest
+    sed -i "s|image:.*edu.mall.backend.*|image: ${IMAGE_TAG}|g" docker-compose.yml
+
+    echo "更新后的docker-compose.yml内容:"
+    cat docker-compose.yml
+
+    # 验证是否替换成功
+    if ! grep -q "${IMAGE_TAG}" docker-compose.yml; then
+      echo "❌ 镜像tag替换失败，恢复备份文件"
+      exit 1
+    fi
+    echo "✅ 镜像tag更新成功"
+
+# ECS部署
+ecs_deploy: &ecs_deploy
+  script: |
+    echo "deploy image_tag: $IMAGE_TAG, env: $CNB_BRANCH_ENV, version: $CNB_VERSION"
+    set -e  # 遇到错误立即退出
+    # 判断是否为dev分支
+    if [ "${CNB_BRANCH_ENV}" != "dev" ]; then
+      echo "⏸️ ecs_deploy 当前分支为 ${$CNB_BRANCH_ENV}，非dev分支，跳过自动部署"
+      echo "💡 ecs_deploy 只有dev分支会触发自动部署到服务器"
+      exit 0
+    fi
+
+    echo "🎯 检测到dev分支，开始自动部署..."
+    # 安装必要工具
+    apt update && apt install -y openssh-client
+
+    # 安全配置SSH
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    echo "${SSH_PRIVATE_KEY}" > ~/.ssh/deploy_key
+    chmod 600 ~/.ssh/deploy_key
+
+    # 创建SSH配置
+    cat > ~/.ssh/config << EOF
+    Host deploy-server
+      HostName ${SERVER_HOST}
+      User ${SERVER_USER}
+      Port ${SERVER_PORT:-22}
+      IdentityFile ~/.ssh/deploy_key
+      StrictHostKeyChecking no
+    EOF
+    
+    # 测试SSH连接
+    echo "测试SSH连接..."
+    ssh deploy-server "echo '✅ SSH连接成功' && docker --version && docker compose --version"
+    
+    # 1. 先停止服务器上的旧服务
+    echo "停止服务器上的旧服务..."
+    ssh deploy-server "
+      set -e
+      if [ -d /opt/edu.mall.backend ] && [ -f /opt/edu.mall.backend/docker-compose.yml ]; then
+        cd /opt/edu.mall.backend
+        echo '停止运行中的容器...'
+        docker compose down || echo '无运行中的容器或停止失败（继续执行）'
+        
+        echo '检查当前目录内容...'
+        ls -la
+      else
+        echo '应用目录不存在，创建目录...'
+        mkdir -p /opt/edu.mall.backend
+      fi
+    " || echo "停止旧服务完成（可能目录不存在）"
+    
+    # 2. 传输更新后的docker-compose.yml到服务器
+    echo "传输docker-compose.yml到服务器..."
+    scp docker-compose.yml deploy-server:/opt/edu.mall.backend/docker-compose.yml
+    
+    # 3. 在服务器上启动新服务
+    echo "启动新服务..."
+    ssh deploy-server "
+      set -e
+      cd /opt/edu.mall.backend 
+      echo '=== 确认文件已传输 ==='
+      ls -la
+      echo 'docker-compose.yml内容:'
+      head -20 docker-compose.yml
+      docker login -u cnb -p ${DOCKER_TOKEN} docker.cnb.cool
+      echo '=== 拉取最新镜像 ===' && docker compose pull
+      
+      echo '=== 启动服务 ===' && docker compose up -d && sleep 10
+      echo '=== 检查容器状态 ===' && docker ps -a | grep 'edu.mall.backend'
+      echo "✅ 部署命令执行完成"
+    "
+
+# ----------------------
+# Pipeline 定义模板
+# ----------------------
+pipeline: &pipeline
+  name: cnb-pipeline
+  services:
+    - docker
+  imports:
+    # 引用密钥仓库中的特定文件
+    - https://cnb.cool/qingflyfei/edu.mall.secret/-/blob/main/dev.yml
+  stages:
+    - name: Check OS
+      script: |
+        cat /etc/os-release
+    - name: prepare
+      <<: *prepare
+    - name: build push
+      jobs:
+        <<: *build_push
+    - name: 轻量服务器 deploy
+      jobs:
+        - update_image_job: # 给第一个job一个具体的名字
+          <<: *update_image
+        - ecs_deploy_job: # 给第二个job一个具体的名字
+          <<: *ecs_deploy
+
+
+$:
+  tag_push:
+    - <<: *pipeline
+
+
+"**":
+  # 开发环境手动部署
+  web_trigger_dev:
+    imports:
+      # 引用密钥仓库中的特定文件
+      - https://cnb.cool/qingflyfei/edu.mall.secret/-/blob/main/dev.yml
+    stages:
+      - name: 手动部署前置准备
+        <<: *web_prepare
+        jobs:
+          - web_prepare:
+            <<: *web_prepare
+          - update_image_job: # 给第一个job一个具体的名字
+            <<: *update_image
+          - ecs_deploy_job: # 给第二个job一个具体的名字
+            <<: *ecs_deploy
+
+  # 生产环境手动部署
+  web_trigger_prod:
+    imports:
+      # 引用密钥仓库中的特定文件
+      - https://cnb.cool/qingflyfei/edu.mall.secret/-/blob/main/prod.yml
+    stages:
+      - name: 手动部署前置准备
+        <<: *web_prepare
+
+      - name: 生产环境手动部署
+        image: tencentcom/deploy-to-tke
+        settingsFrom: ttps://cnb.cool/qingflyfei/edu.mall.secret/-/blob/main/tke_secret.yml
+        settings:
+          region: ap-shanghai
+          cluster_id: cls-el54b7pt
+          namespace: prod
+          workload_kind: deployment
+          workload_name: prod-edu-mall-backend-deploy
+          container_names: prod-edu-mall-backend
+          container_images: $IMAGE_TAG

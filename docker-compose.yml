@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  edu_mall_backend:
+    image: docker.cnb.cool/qingflyfei/edu.mall.backend/dev:1.6.6-f93d4e93  # CNB镜像仓库地址
+    container_name: edu-mall-backend
+    restart: unless-stopped
+    ports:
+      - "8088:8088"  # 根据你的应用实际端口调整
+    environment:
+      - TZ=Asia/Shanghai
+      - ETCD_ADDR=http://127.0.0.1:2379
+    working_dir: /data/wwwRoot
+    command: ["./edu.mall.backend"]
+    network_mode: "host"  # host模式

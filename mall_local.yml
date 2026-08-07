@@ -1,0 +1,69 @@
+
+server:
+  http_port: 8089
+  enable_pprof: true
+  log_level: debug
+  env: dev
+
+mysql:
+  dialect: mysql
+  user: root
+  password: 123456
+  host: 127.0.0.1
+  port: 3306
+  database: edu.mall
+  charset: utf8mb4
+  show_mysql: true
+  max_open: 20
+  max_idle: 5
+
+redis:
+  addr: 127.0.0.1:6379
+  password: ""
+  db_index: 0
+  max_idle: 2
+  max_open: 10
+
+wechat_pay:
+  "app_id": ""
+  "mch_id": ""
+  "api_key": ""
+  "cert_serial_no": ""
+  "callback_url": "http://localhost:8089/api/callback"
+  "is_prod": false
+
+biz_conf:
+  lark_group_id: oc_b2604f6798571c6aaff50717226cd289
+  mobile_secret: ""
+  biz_secret: ""
+
+storage:
+  secret_id: ""
+  secret_key: ""
+  app_id: ""
+  bucket:
+    region: "ap-shanghai"
+    bucket_name: "qingflyfei-1253249773"
+    domain: "https://qingflyfei-1253249773.cos.ap-shanghai.myqcloud.com"
+    cdn_domain: "https://qingflyfei-1253249773.cos.ap-shanghai.myqcloud.com"
+    paths:
+      course: "course/dev"
+      lesson: "lesson/dev"
+      intro: "intro/dev"
+
+app_conf:
+  1000:
+    app_type: official
+    app_name: 公众号
+    app_id: wxb5c0d7c0c0c0c0c0c
+    app_secret: 9c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c
+  1001:
+    app_type: applet
+    app_name: 小程序
+    app_id: 
+    app_secret: 
+  2000:
+    app_type: lark
+    app_name: 飞书
+    app_id: 
+    app_secret: 
