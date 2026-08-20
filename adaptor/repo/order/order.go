@@ -22,7 +22,7 @@ type IOrder interface {
 	GetOrderItemByOrderIDs(ctx context.Context, orderIds []int64) (map[int64][]*model.OrderItem, error)
 	GetOrderRefunds(ctx context.Context, orderID int64) ([]*model.OrderRefund, error)
 	GetOrderList(ctx context.Context, req *do.GetOrderList) ([]*model.Order, int64, error)
-	CancelOrder(ctx context.Context, orderID int64) error
+	CancelOrder(ctx context.Context, req *do.CancelOrder) error
 	UpdateOrderPaySuccess(ctx context.Context, req *do.UpdateOrderPaySuccess) error
 	UpdateOrderOutTradeNo(ctx context.Context, orderID int64, outTradeNo string) error
 	// 订单统计
@@ -117,9 +117,16 @@ func (o *Order) GetOrderRefunds(ctx context.Context, orderID int64) ([]*model.Or
 	return qs.WithContext(ctx).Where(qs.OrderID.Eq(orderID)).Find()
 }
 
-func (o *Order) CancelOrder(ctx context.Context, orderID int64) error {
+func (o *Order) CancelOrder(ctx context.Context, req *do.CancelOrder) error {
 	qs := query.Use(o.db).Order
-	_, err := qs.WithContext(ctx).Where(qs.ID.Eq(orderID)).Update(qs.Status, consts.OrderStatusCancel)
+	updateMap := map[string]interface{}{
+		qs.Status.ColumnName().String():       consts.OrderStatusCancel,
+		qs.CancelType.ColumnName().String():   req.CancelType,
+		qs.CancelBy.ColumnName().String():     req.CancelBy,
+		qs.CancelAt.ColumnName().String():     req.CancelAt,
+		qs.CancelReason.ColumnName().String(): req.Reason,
+	}
+	_, err := qs.WithContext(ctx).Where(qs.ID.Eq(req.OrderID)).Updates(updateMap)
 	return err
 }
 
@@ -131,9 +138,12 @@ func (o *Order) UpdateOrderPaySuccess(ctx context.Context, req *do.UpdateOrderPa
 			qs.PaymentAt.ColumnName().String(): req.PaymentAt.UnixMilli(),
 			qs.TradeNo.ColumnName().String():   req.TransactionID,
 		}
-		err := tx.Where(qs.ID.Eq(req.OrderID)).Updates(updateMap).Error
-		if err != nil {
-			return err
+		res := tx.Where(qs.ID.Eq(req.OrderID), qs.Status.Eq(consts.OrderStatusWaitPay)).Updates(updateMap)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return nil
 		}
 		return req.BenefitFunc()
 	})
@@ -163,7 +173,7 @@ func (o *Order) GetOrderList(ctx context.Context, req *do.GetOrderList) ([]*mode
 	if req.GoodsNameKw != "" {
 		tx = tx.Where(qs.OrderDesc.Like(tools.GetAllLike(req.GoodsNameKw)))
 	}
-	return tx.Order(qs.ID.Desc()).FindByPage(req.Page, req.Limit)
+	return tx.Order(qs.ID.Desc()).FindByPage(req.GetOffset(), req.Limit)
 }
 func (o *Order) dateSelect(dateType int32) string {
 	switch dateType {

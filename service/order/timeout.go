@@ -2,9 +2,11 @@ package order
 
 import (
 	"context"
+	"time"
 	"go.uber.org/zap"
 	"mall/adaptor/repo/model"
 	"mall/consts"
+	"mall/service/do"
 	"mall/utils/logger"
 	"mall/utils/tools"
 )
@@ -35,7 +37,12 @@ func (s *Service) TimeOutOrderCancel(ctx context.Context, orderID int64) error {
 		return err
 	}
 	if IsWaitPay(order) {
-		err = s.order.CancelOrder(ctx, orderID)
+		err = s.order.CancelOrder(ctx, &do.CancelOrder{
+			OrderID:    orderID,
+			CancelType: consts.CancelTypeTimeout,
+			CancelBy:   consts.SystemCancelBy,
+			CancelAt:   time.Now().UnixMilli(),
+		})
 		if err != nil {
 			logger.Error("TimeOutOrderCancel CancelOrder error", zap.Error(err), zap.Any("order_id", orderID))
 			return err

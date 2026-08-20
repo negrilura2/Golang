@@ -67,6 +67,13 @@ const (
 	OrderStatusCompleted = 6 // 已完成
 )
 
+// 订单取消类型（orders.cancel_type）
+// 代码中以 AdminUser(1)/CustomerUser(2) 区分客服/用户取消（见 service.go convertModelOrderToOrderDto）。
+const (
+	CancelTypeTimeout = 3  // 超时取消
+	SystemCancelBy    = -1 // 系统超时取消人
+)
+
 const (
 	RefundStatusProcessing = 1
 	RefundStatusDone       = 2

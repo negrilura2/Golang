@@ -38,11 +38,15 @@ type Service struct {
 
 func NewService(adaptor adaptor.IAdaptor) *Service {
 	return &Service{
-		conf:       adaptor.GetConfig(),
-		course:     goods.NewCourse(adaptor),
-		rdsOrder:   redis.NewOrder(adaptor),
-		order:      order.NewOrder(adaptor),
-		payment:    rpc.NewWechatPay(adaptor),
+		conf:     adaptor.GetConfig(),
+		course:   goods.NewCourse(adaptor),
+		rdsOrder: redis.NewOrder(adaptor),
+		order:    order.NewOrder(adaptor),
+		// 本地学习环境无微信支付商户密钥，改用 MockPay 假支付实现，
+		// 使支付相关链路(pay_now/pay_later/cancel/定时查单)可完整走通。
+		// 接入真实商户号并建好 payment_private_key 表后，换回：
+		// payment:    rpc.NewWechatPay(adaptor),
+		payment:    rpc.NewMockPay(),
 		idNode:     redis.NewGenIdNode(adaptor),
 		userCourse: user.NewUserCourse(adaptor),
 		adminUser:  admin.NewAdminUser(adaptor),
@@ -142,10 +146,11 @@ func (s *Service) GetOrderInfo(ctx context.Context, user *common.UserInfo, req *
 		return nil, common.ServerErr.WithMsg("convertModelOrderToOrderDto error")
 	}
 	var (
-		orderDto       = tempList[0]
-		orderItems     = make([]*dto.OrderItemDto, 0)
-		orderRefunds   = make([]*dto.RefundDto, 0)
-		refundItemsMap = make(map[int64][]int64)
+		orderDto            = tempList[0]
+		orderItems          = make([]*dto.OrderItemDto, 0)
+		orderRefunds        = make([]*dto.RefundDto, 0)
+		refundItemsMap      = make(map[int64][]int64)
+		itemRefundStatusMap = make(map[int64]int32)
 	)
 	refundMaps := lo.SliceToMap(refunds, func(item *model.OrderRefund) (int64, *model.OrderRefund) {
 		itemIds := make([]int64, 0)
@@ -163,6 +168,13 @@ func (s *Service) GetOrderInfo(ctx context.Context, user *common.UserInfo, req *
 		orderRefunds[i].ItemIds = refundItemsMap[item.ID]
 		orderRefunds[i].Status = refundMaps[item.ID].Status
 	}
+	for _, refund := range refunds {
+		itemIds := make([]int64, 0)
+		_ = json.Unmarshal([]byte(refund.ItemIds), &itemIds)
+		for _, itemID := range itemIds {
+			itemRefundStatusMap[itemID] = refund.Status
+		}
+	}
 	for _, item := range orderItems {
 		orderItem, ok := itemMap[item.ID]
 		if !ok {
@@ -175,7 +187,9 @@ func (s *Service) GetOrderInfo(ctx context.Context, user *common.UserInfo, req *
 			logger.Error("GetOrderInfo json.Unmarshal error", zap.Error(err), zap.Any("orderItem", orderItem))
 			return nil, common.ServerErr.WithMsg("json.Unmarshal error")
 		}
-		item.RefundStatus = refundMaps[item.ID].Status
+		// 修复：订单无退款记录时 refundMaps[item.ID] 为 nil，直接取 .Status 会 panic。
+		// 改为安全取值，无退款时 RefundStatus 保持 0（无退款）。
+		item.RefundStatus = itemRefundStatusMap[item.ID]
 		item.GoodsSnap = goodsSnap
 	}
 	resp := &dto.OrderInfoResp{

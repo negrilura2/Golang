@@ -18,6 +18,7 @@ import (
 	"mall/service/dto"
 	"mall/utils/logger"
 	"mall/utils/tools"
+	"time"
 )
 
 func (s *Service) OrderCalcFee(ctx context.Context, user *common.UserInfo, req *dto.OrderCalcFeeReq) (*dto.OrderCalcFeeResp, common.Errno) {
@@ -258,14 +259,55 @@ func (s *Service) OrderPayLater(ctx context.Context, user *common.UserInfo, req 
 	}, common.OK
 }
 
+//	func (s *Service) CancelOrder(ctx context.Context, user *common.UserInfo, req *dto.CancelOrderReq) common.Errno {
+//		orderUUID := tools.UUIDHex()
+//		locked, err := s.rdsOrder.GetOrderLock(ctx, req.OrderID, orderUUID)
+//		if err != nil {
+//			logger.Error("CancelOrder GetOrderLock error", zap.Error(err), zap.Any("req", req))
+//			return common.DatabaseErr.WithErr(err)
+//		}
+//		if !locked {
+//			return common.OrderLockedErr
+//		}
+//		defer s.rdsOrder.UnLockOrder(ctx, req.OrderID, orderUUID)
+//
+//		order, err := s.order.GetOrderByID(ctx, req.OrderID)
+//		if err != nil {
+//			if errors.Is(err, gorm.ErrRecordNotFound) {
+//				return common.OrderNotFoundErr
+//			}
+//			logger.Error("CancelOrder GetOrderByID error", zap.Error(err), zap.Any("req", req))
+//			return common.DatabaseErr.WithErr(err)
+//		}
+//		if order.Status != consts.OrderStatusWaitPay {
+//			return common.OrderCantCancelErr
+//		}
+//		err = s.order.CancelOrder(ctx, &do.CancelOrder{
+//			OrderID:    req.OrderID,
+//			CancelType: consts.CustomerUser,
+//			CancelBy:   user.User.ID,
+//			CancelAt:   time.Now().UnixMilli(),
+//			Reason:     req.Reason,
+//		})
+//		if err != nil {
+//			logger.Error("CancelOrder error", zap.Error(err), zap.Any("req", req))
+//			return common.ServerErr.WithErr(err)
+//		}
+//		s.payment.CloseOrder(ctx, order.InnerTradeNo)
+//		s.rdsOrder.DelOrderPayResult(ctx, order.ID)
+//		s.rdsOrder.DelTimeoutOrderCancel(ctx, order.ID)
+//
+//		return common.OK
+//	}
 func (s *Service) CancelOrder(ctx context.Context, user *common.UserInfo, req *dto.CancelOrderReq) common.Errno {
 	orderUUID := tools.UUIDHex()
 	locked, err := s.rdsOrder.GetOrderLock(ctx, req.OrderID, orderUUID)
 	if err != nil {
-		logger.Error("CancelOrder GetOrderLock error", zap.Error(err), zap.Any("req", req))
+		logger.Error("CancelOrderError GetOrderLockError", zap.Error(err), zap.Int64("order", req.OrderID))
 		return common.DatabaseErr.WithErr(err)
 	}
 	if !locked {
+		logger.Error("CancelOrderError GetOrderLockError", zap.Int64("order", req.OrderID))
 		return common.OrderLockedErr
 	}
 	defer s.rdsOrder.UnLockOrder(ctx, req.OrderID, orderUUID)
@@ -273,26 +315,41 @@ func (s *Service) CancelOrder(ctx context.Context, user *common.UserInfo, req *d
 	order, err := s.order.GetOrderByID(ctx, req.OrderID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Error("CancelOrderError GetOrderByIDError", zap.Error(err), zap.Int64("order", req.OrderID))
 			return common.OrderNotFoundErr
 		}
-		logger.Error("CancelOrder GetOrderByID error", zap.Error(err), zap.Any("req", req))
+		logger.Error("CancelOrderError GetOrderByIDError", zap.Error(err), zap.Int64("order", req.OrderID))
 		return common.DatabaseErr.WithErr(err)
 	}
 	if order.Status != consts.OrderStatusWaitPay {
 		return common.OrderCantCancelErr
 	}
-	err = s.order.CancelOrder(ctx, req.OrderID)
+	err = s.order.CancelOrder(ctx, &do.CancelOrder{
+		OrderID:    req.OrderID,
+		CancelType: consts.CustomerUser,
+		CancelBy:   user.User.ID,
+		CancelAt:   time.Now().UnixMilli(),
+		Reason:     req.Reason,
+	})
 	if err != nil {
-		logger.Error("CancelOrder error", zap.Error(err), zap.Any("req", req))
+		logger.Error("CancelOrder CancelOrder error", zap.Error(err), zap.Int64("order_id", req.OrderID))
 		return common.ServerErr.WithErr(err)
 	}
-	s.payment.CloseOrder(ctx, order.InnerTradeNo)
-	s.rdsOrder.DelOrderPayResult(ctx, order.ID)
-	s.rdsOrder.DelTimeoutOrderCancel(ctx, order.ID)
 
+	err = s.payment.CloseOrder(ctx, order.InnerTradeNo)
+	if err != nil {
+		logger.Error("payment CloseOrderError", zap.Error(err), zap.Int64("order_id", req.OrderID))
+	}
+	err = s.rdsOrder.DelOrderPayResult(ctx, order.ID)
+	if err != nil {
+		logger.Error("DelOrderPayResult", zap.Error(err), zap.Int64("order_id", req.OrderID))
+	}
+	s.rdsOrder.DelTimeoutOrderCancel(ctx, order.ID)
+	if err != nil {
+		logger.Error("DelTimeoutOrderCancelError", zap.Error(err), zap.Int64("order_id", req.OrderID))
+	}
 	return common.OK
 }
-
 func (s *Service) GetUserOrderList(ctx context.Context, user *common.UserInfo, req *dto.GetOrderListReq) (*dto.GetUserOrderListResp, common.Errno) {
 	list, count, err := s.order.GetOrderList(ctx, &do.GetOrderList{
 		Pager:       req.Pager,

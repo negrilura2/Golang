@@ -51,6 +51,14 @@ type GetOrderList struct {
 	GoodsNameKw string
 }
 
+type CancelOrder struct {
+	OrderID    int64
+	CancelType int32
+	CancelBy   int64
+	CancelAt   int64 // 取消时间，毫秒时间戳
+	Reason     string
+}
+
 type OrderRefund struct {
 	UserID      int64
 	OrderID     int64
