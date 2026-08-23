@@ -59,4 +59,6 @@ var (
 	OrderCantCancelErr   = Errno{Code: 12007, Msg: "订单在该状态下，不支持取消"}
 	OrderCantRefundErr   = Errno{Code: 12008, Msg: "订单在该状态下，不支持退款"}
 	OrderRefundAmountErr = Errno{Code: 12009, Msg: "退款金额错误"}
+
+	HashErr = Errno{Code: 13001, Msg: "设置密码失败"}
 )

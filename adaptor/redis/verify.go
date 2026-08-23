@@ -27,8 +27,8 @@ type IVerify interface {
 	GetUserToken(ctx context.Context, token string) (string, error)
 	CleanUserToken(ctx context.Context, userId int64) error
 
-	IncrPasswordErr(ctx context.Context, mobile string, expire time.Duration) (int64, error)
-	DeletePasswordErr(ctx context.Context, mobile string) error
+	IncrPasswordErr(ctx context.Context, scene int, mobile string, expire time.Duration) (int64, error)
+	DeletePasswordErr(ctx context.Context, scene int, mobile string) error
 }
 
 type Verify struct {
@@ -164,12 +164,12 @@ func (v *Verify) CleanUserToken(ctx context.Context, userId int64) error {
 	return v.redis.Del(redisKey, userMapTokenKey).Err()
 }
 
-func fmtVerifyPasswordErr(mobile string) string {
-	return fmt.Sprintf("%s:admin:user:password:errcount:%s", config.ServerFullName, mobile)
+func fmtVerifyPasswordErr(scene int, mobile string) string {
+	return fmt.Sprintf("%s:%d:user:password:errcount:%s", config.ServerFullName, scene, mobile)
 }
 
-func (v *Verify) IncrPasswordErr(ctx context.Context, mobile string, expire time.Duration) (int64, error) {
-	redisKey := fmtVerifyPasswordErr(mobile)
+func (v *Verify) IncrPasswordErr(ctx context.Context, scene int, mobile string, expire time.Duration) (int64, error) {
+	redisKey := fmtVerifyPasswordErr(scene, mobile)
 	incr, err := v.redis.Incr(redisKey).Result()
 	if err != nil {
 		return 0, err
@@ -179,7 +179,7 @@ func (v *Verify) IncrPasswordErr(ctx context.Context, mobile string, expire time
 	}
 	return incr, err
 }
-func (v *Verify) DeletePasswordErr(ctx context.Context, mobile string) error {
-	redisKey := fmtVerifyPasswordErr(mobile)
+func (v *Verify) DeletePasswordErr(ctx context.Context, scene int, mobile string) error {
+	redisKey := fmtVerifyPasswordErr(scene, mobile)
 	return v.redis.Del(redisKey).Err()
 }

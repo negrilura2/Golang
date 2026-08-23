@@ -7,6 +7,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/gogf/gf/util/gconv"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"mall/adaptor/repo/model"
 	"mall/adaptor/rpc"
@@ -15,6 +16,7 @@ import (
 	"mall/service/do"
 	"mall/service/dto"
 	"mall/utils/logger"
+	"mall/utils/password"
 	"mall/utils/pool"
 	"mall/utils/tools"
 	"time"
@@ -291,7 +293,7 @@ func (s *Service) MobilePasswordLogin(ctx context.Context, req *dto.MobilePasswo
 		return nil, common.UserNotFoundErr
 	}
 	// 进行用户密码校验累计
-	errCount, err := s.verify.IncrPasswordErr(ctx, req.Mobile, consts.PasswordErrExpire)
+	errCount, err := s.verify.IncrPasswordErr(ctx, consts.CustomerUser, req.Mobile, consts.PasswordErrExpire)
 	if err != nil {
 		logger.Error("MobilePasswordLogin IncrPasswordErr error", zap.Error(err), zap.String("mobile", req.Mobile))
 		return nil, common.RedisErr.WithErr(err)
@@ -299,11 +301,32 @@ func (s *Service) MobilePasswordLogin(ctx context.Context, req *dto.MobilePasswo
 	if errCount > consts.PasswordErrMaxCount {
 		return nil, common.PasswordErrLimit
 	}
-	if user.Password != req.Password {
+	err = password.VerifyPassword(user.Password, req.Password)
+	switch {
+	case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword):
 		return nil, common.InvalidPasswordErr
+	case err == nil:
+		_ = s.verify.DeletePasswordErr(ctx, consts.CustomerUser, req.Mobile)
+	default:
+		if user.Password == req.Password {
+			newHash, err := password.HashPassword(req.Password)
+			if err != nil {
+				logger.Error("HashPassword Error", zap.Error(err))
+				return nil, common.HashErr
+			}
+			err = s.user.UpdateUserPassword(ctx, &do.UpdateUserPassword{
+				UserID:      user.ID,
+				NewPassword: newHash,
+			})
+			if err != nil {
+				logger.Error("UserLoginError UpdateUserPasswordError", zap.Error(err))
+				return nil, common.DatabaseErr.WithErr(err)
+			}
+			_ = s.verify.DeletePasswordErr(ctx, consts.CustomerUser, req.Mobile)
+		} else {
+			return nil, common.InvalidPasswordErr
+		}
 	}
-	_ = s.verify.DeletePasswordErr(ctx, req.Mobile)
-
 	userInfo, err := s.packageUserInfo(ctx, user)
 	if err != nil {
 		logger.Error("MobilePasswordLogin packageUserInfo error", zap.Error(err), zap.String("mobile", req.Mobile))
@@ -338,9 +361,13 @@ func (s *Service) MobilePasswordReset(ctx context.Context, req *dto.MobilePasswo
 		return common.UserNotFoundErr
 	}
 
+	confirmPassword, err := password.HashPassword(req.ConfirmPassword)
+	if err != nil {
+		return common.HashErr
+	}
 	err = s.user.UpdateUserPassword(ctx, &do.UpdateUserPassword{
 		UserID:      user.ID,
-		NewPassword: req.ConfirmPassword,
+		NewPassword: confirmPassword,
 	})
 	if err != nil {
 		logger.Error("MobilePasswordReset UpdateUserPassword error", zap.Error(err), zap.String("mobile", req.Mobile))

@@ -56,6 +56,8 @@ func (s *Service) GetSlideCaptcha(ctx context.Context) (*dto.GetVerifyCaptchaRes
 		TitleWidth:     dotData.Width,
 		TitleX:         dotData.TileX,
 		TitleY:         dotData.TileY,
+		SlideX:         dotData.X,
+		SlideY:         dotData.Y,
 		Expire:         110,
 	}, common.OK
 }

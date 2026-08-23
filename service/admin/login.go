@@ -7,6 +7,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/gogf/gf/util/gconv"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"mall/adaptor/repo/model"
 	"mall/adaptor/rpc"
@@ -15,6 +16,7 @@ import (
 	"mall/service/do"
 	"mall/service/dto"
 	"mall/utils/logger"
+	"mall/utils/password"
 	"mall/utils/tools"
 	"time"
 )
@@ -133,7 +135,7 @@ func (s *Service) MobilePasswordLogin(ctx context.Context, req *dto.MobilePasswo
 		return nil, common.InvalidPasswordErr
 	}
 	// 进行用户密码校验累计
-	errCount, err := s.verify.IncrPasswordErr(ctx, req.Mobile, consts.PasswordErrExpire)
+	errCount, err := s.verify.IncrPasswordErr(ctx, consts.AdminUser, req.Mobile, consts.PasswordErrExpire)
 	if err != nil {
 		logger.Error("MobilePasswordLogin IncrPasswordErr error", zap.Error(err), zap.String("mobile", req.Mobile))
 		return nil, common.RedisErr.WithErr(err)
@@ -141,10 +143,32 @@ func (s *Service) MobilePasswordLogin(ctx context.Context, req *dto.MobilePasswo
 	if errCount > consts.PasswordErrMaxCount {
 		return nil, common.PasswordErrLimit
 	}
-	if adminUser.Password != req.Password {
+	err = password.VerifyPassword(adminUser.Password, req.Password)
+	switch {
+	case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword):
 		return nil, common.InvalidPasswordErr
+	case err == nil:
+		_ = s.verify.DeletePasswordErr(ctx, consts.AdminUser, req.Mobile)
+	default:
+		if adminUser.Password == req.Password {
+			newHash, err := password.HashPassword(req.Password)
+			if err != nil {
+				logger.Error("HashPassword Error", zap.Error(err))
+				return nil, common.HashErr
+			}
+			err = s.adminUser.UpdateUserPassword(ctx, &do.UpdateAdminUserPassword{
+				ID:       adminUser.ID,
+				Password: newHash,
+			})
+			if err != nil {
+				logger.Error("AdminUserLoginError UpdateUserPasswordError", zap.Error(err))
+				return nil, common.DatabaseErr.WithErr(err)
+			}
+			_ = s.verify.DeletePasswordErr(ctx, consts.AdminUser, req.Mobile)
+		} else {
+			return nil, common.InvalidPasswordErr
+		}
 	}
-	_ = s.verify.DeletePasswordErr(ctx, req.Mobile)
 
 	return s.handleAdminLogin(ctx, adminUser, err)
 }
@@ -168,9 +192,13 @@ func (s *Service) MobilePasswordReset(ctx context.Context, req *dto.MobilePasswo
 	if adminUser == nil || adminUser.Status != consts.IsEnable {
 		return common.AdminUserNotFound
 	}
+	confirmedPassword, err := password.HashPassword(req.ConfirmPassword)
+	if err != nil {
+		return common.HashErr
+	}
 	err = s.adminUser.UpdateUserPassword(ctx, &do.UpdateAdminUserPassword{
 		ID:       adminUser.ID,
-		Password: req.ConfirmPassword,
+		Password: confirmedPassword,
 	})
 	if err != nil {
 		logger.Error("MobilePasswordReset UpdateAdminUserPassword error", zap.Error(err), zap.String("mobile", req.Mobile))

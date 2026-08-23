@@ -23,7 +23,9 @@ type GetVerifyCaptchaResp struct {
 	TitleWidth     int    `json:"title_width"`        // 滑块图片宽
 	TitleX         int    `json:"title_x"`            // 滑块图的x坐标
 	TitleY         int    `json:"title_y"`            // 滑块图的y坐标
-	Expire         int64  `json:"expire"`             // 过期时间
+	SlideX         int    `json:"slide_x"`
+	SlideY         int    `json:"slide_y"`
+	Expire         int64  `json:"expire"` // 过期时间
 }
 
 type CheckCaptchaReq struct {

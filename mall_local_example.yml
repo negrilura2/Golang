@@ -8,7 +8,7 @@ server:
 mysql:
   dialect: mysql
   user: root
-  password: 123456
+  password:
   host: 127.0.0.1
   port: 3306
   database: edu.mall
@@ -33,8 +33,8 @@ wechat_pay:
   "is_prod": false
 
 biz_conf:
-  lark_group_id: oc_b2604f6798571c6aaff50717226cd289
-  mobile_secret: ""
+  lark_group_id:
+  mobile_secret: "mall-demo-secret"
   biz_secret: ""
 
 storage:
@@ -43,9 +43,9 @@ storage:
   app_id: ""
   bucket:
     region: "ap-shanghai"
-    bucket_name: "qingflyfei-1253249773"
-    domain: "https://qingflyfei-1253249773.cos.ap-shanghai.myqcloud.com"
-    cdn_domain: "https://qingflyfei-1253249773.cos.ap-shanghai.myqcloud.com"
+    bucket_name:
+    domain:
+    cdn_domain:
     paths:
       course: "course/dev"
       lesson: "lesson/dev"
@@ -56,7 +56,7 @@ app_conf:
     app_type: official
     app_name: 公众号
     app_id: wxb5c0d7c0c0c0c0c0c
-    app_secret: 9c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c
+    app_secret:
   1001:
     app_type: applet
     app_name: 小程序
@@ -66,4 +66,4 @@ app_conf:
     app_type: lark
     app_name: 飞书
     app_id: cli_aafc74abac785bcf
-    app_secret: R7gvWD7oE07ryXZ4RgzKChUY26cdPiqE
+    app_secret:
