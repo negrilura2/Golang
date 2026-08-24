@@ -19,10 +19,13 @@ func NewPoolWithSize(size int) *Pool {
 
 func (p *Pool) RunGo(taskFun func()) {
 	p.wg.Add(1)
-	_ = p.pool.Submit(func() {
-		taskFun()
+	err := p.pool.Submit(func() {
 		defer p.wg.Done()
+		taskFun()
 	})
+	if err != nil {
+		p.wg.Done()
+	}
 }
 
 func (p *Pool) Wait() {
