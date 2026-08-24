@@ -128,6 +128,9 @@ func (s *Service) OrderPayNow(ctx context.Context, user *common.UserInfo, req *d
 		return nil, common.ServerErr.WithErr(err)
 	}
 	// 发起微信支付, 获取预支付交易号
+	if len(user.AppUsers) == 0 {
+		return nil, common.UserNotFoundErr
+	}
 	bodyMap, outTradeNo := s.getWechatPrePay(user.AppUsers[0].OpenID, s.conf.WechatPay.AppID, orderFeeDto)
 	_, wxPayParams, err := s.payment.JsApiPrePayOrder(ctx, bodyMap)
 	if err != nil {
@@ -227,6 +230,9 @@ func (s *Service) OrderPayLater(ctx context.Context, user *common.UserInfo, req 
 		TotalPayFee:      order.PaymentAmount,
 	}
 	// 发起微信支付, 获取预支付交易号
+	if len(user.AppUsers) == 0 {
+		return nil, common.UserNotFoundErr
+	}
 	bodyMap, outTradeNo := s.getWechatPrePay(user.AppUsers[0].OpenID, s.conf.WechatPay.AppID, orderFeeDto)
 	_, wxPayParams, err := s.payment.JsApiPrePayOrder(ctx, bodyMap)
 	if err != nil {

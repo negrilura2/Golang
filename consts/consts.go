@@ -104,7 +104,7 @@ func GetRefundStatus(wxStatus string) int32 {
 // '1：用户下单  2：管理后台  3：系统赠送'
 const (
 	OrderSourceUser  = 1
-	OrderSourceAdmin = 1
+	OrderSourceAdmin = 2
 	OrderSourceSys   = 3
 )
 
