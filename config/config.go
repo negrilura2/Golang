@@ -132,6 +132,7 @@ func InitConfig() *Config {
 		if err != nil {
 			panic(err)
 		}
+		overrideFromEnv(tempConf)
 		return tempConf
 	}
 
@@ -140,6 +141,7 @@ func InitConfig() *Config {
 	if err != nil {
 		panic(err)
 	}
+	overrideFromEnv(tempConf)
 	return tempConf
 }
 
@@ -211,11 +213,34 @@ func (c *Config) Validate() []error {
 	}
 	n := len(c.BizConf.MobileSecret)
 	if n != 16 && n != 24 && n != 32 {
-		errs = append(errs, errors.New("BizConf.MobileSecret长度= "+strconv.Itoa(n)+"不为16/24/32"))
+		errs = append(errs, errors.New("BizConf.MobileSecret长度= "+strconv.Itoa(n)+", 不为16/24/32"))
 	}
 	if c.Server.Env == "" {
 		errs = append(errs, errors.New("Server.Env 不能为空"))
 	}
 
 	return errs
+}
+func overrideFromEnv(c *Config) {
+	if v := os.Getenv("MALL_MOBILE_SECRET"); v != "" {
+		c.BizConf.MobileSecret = v
+	}
+	if v := os.Getenv("MALL_MYSQL_PASSWORD"); v != "" {
+		c.Mysql.Password = v
+	}
+	if v := os.Getenv("MALL_BIZ_SECRET"); v != "" {
+		c.BizConf.BizSecret = v
+	}
+	if v := os.Getenv("MALL_LARK_GROUP_ID"); v != "" {
+		c.BizConf.LarkGroupID = v
+	}
+	if v := os.Getenv("MALL_WECHAT_API_KEY"); v != "" {
+		c.WechatPay.ApiKey = v
+	}
+	if v := os.Getenv("MALL_STORAGE_SECRET_ID"); v != "" {
+		c.Storage.SecretID = v
+	}
+	if v := os.Getenv("MALL_STORAGE_SECRET_KEY"); v != "" {
+		c.Storage.SecretKey = v
+	}
 }
