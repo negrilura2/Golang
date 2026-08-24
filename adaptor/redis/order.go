@@ -15,6 +15,7 @@ type IOrder interface {
 	// 订单下单前的金额计算
 	SetOrderCalcFee(ctx context.Context, feeUUID string, feeData string, expire time.Duration) error
 	GetOrderCalcFee(ctx context.Context, feeUUID string) (string, error)
+	GetAndDelOrderCalcFee(ctx context.Context, feeUUID string) (string, error)
 
 	// 订单分布式锁
 	GetOrderLock(ctx context.Context, orderID int64, uuid string) (bool, error)
@@ -57,6 +58,18 @@ func (o *Order) SetOrderCalcFee(ctx context.Context, feeUUID string, feeData str
 
 func (o *Order) GetOrderCalcFee(ctx context.Context, feeUUID string) (string, error) {
 	return o.redis.Get(fmtOrderCalcFeeKey(feeUUID)).Result()
+}
+
+func (o *Order) GetAndDelOrderCalcFee(ctx context.Context, feeUUID string) (string, error) {
+	key := fmtOrderCalcFeeKey(feeUUID)
+	res, err := luaGetAndDelete.Run(o.redis, []string{key}).Result()
+	if err != nil {
+		return "", err
+	}
+	if res == nil || res == "" {
+		return "", redis.Nil
+	}
+	return res.(string), nil
 }
 
 func fmtOrderLockKey(orderID int64) string {

@@ -96,7 +96,7 @@ func (s *Service) getWechatPrePay(openID, appID string, fee *dto.OrderCalcFeeRes
 }
 
 func (s *Service) OrderPayNow(ctx context.Context, user *common.UserInfo, req *dto.OrderPayNowReq) (*dto.OrderPayNowResp, common.Errno) {
-	orderCalcFeeStr, err := s.rdsOrder.GetOrderCalcFee(ctx, req.FeeUUID)
+	orderCalcFeeStr, err := s.rdsOrder.GetAndDelOrderCalcFee(ctx, req.FeeUUID)
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil, common.OrderCalcFeeErr

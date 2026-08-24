@@ -11,7 +11,13 @@ var luaRenew = redis.NewScript(`
 		  return 0
 		end
 `)
-
+var luaGetAndDelete = redis.NewScript(`
+	local v = redis.call("GET",KEYS[1]) 
+	if v then
+		redis.call("DEL",KEYS[1])
+	end
+	return v
+`)
 var luaUnlock = redis.NewScript(`
 		local k = KEYS[1]
 		local v = ARGV[1]

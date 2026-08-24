@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,7 +28,7 @@ import (
 const (
 	dsn          = "root:123456@tcp(127.0.0.1:3306)/edu.mall?charset=utf8mb4&parseTime=true&loc=Local"
 	mobileSecret = "mall-demo-secret" // 必须与 mall_local.yml 的 mobile_secret 一致，且为 16/24/32 字节
-	serverPrefix = "edu.mall"           // 必须与 config.ServerFullName 一致
+	serverPrefix = "edu.mall"         // 必须与 config.ServerFullName 一致
 )
 
 func main() {
@@ -56,6 +57,12 @@ func main() {
 			os.Exit(1)
 		}
 		errcount(os.Args[2])
+	case "seed-app":
+		if len(os.Args) < 5 {
+			usage()
+			os.Exit(1)
+		}
+		seedApp(os.Args[2], os.Args[3], os.Args[4])
 	default:
 		usage()
 		os.Exit(1)
@@ -217,4 +224,28 @@ func errcount(mobile string) {
 		ttl, _ := rds.TTL(key).Result()
 		fmt.Printf("  %-14s errcount=%d  ttl=%v\n  key=%s\n", s.name, v, ttl, key)
 	}
+}
+
+func seedApp(userID, appCode, openID string) {
+	db := openDB()
+	uid, err := strconv.Atoi(userID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	code, err := strconv.Atoi(appCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+	app := model.AppUser{
+		UserID:   int64(uid),
+		AppCode:  int32(code),
+		OpenID:   openID,
+		Status:   1,
+		CreateAt: time.Now(),
+		UpdateAt: time.Now(),
+	}
+	if err := db.Create(&app).Error; err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("创建app_user: user_id=%d app_code=%d open_id=%s\n", uid, code, openID)
 }
