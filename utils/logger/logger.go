@@ -134,3 +134,10 @@ func Warn(msg string, fields ...zap.Field) {
 func Error(msg string, fields ...zap.Field) {
 	logger.Error(msg, fields...)
 }
+
+func MaskToken(token string) string {
+	if len(token) < 8 {
+		return token
+	}
+	return token[:8] + "***"
+}

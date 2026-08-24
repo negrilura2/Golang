@@ -11,16 +11,10 @@ import (
 )
 
 func GetRequestBody(ctx *gin.Context) string {
-	data, _ := io.ReadAll(ctx.Request.Body)
-	return string(data)
-}
-
-func GetResponseBody(ctx *gin.Context) string {
-	resp := ctx.Request.Response
-	if resp == nil || resp.Body == nil {
+	data, err := io.ReadAll(io.LimitReader(ctx.Request.Body, 512))
+	if err != nil {
 		return ""
 	}
-	data, _ := io.ReadAll(ctx.Request.Response.Body)
 	return string(data)
 }
 
@@ -48,7 +42,7 @@ func AccessLogMiddleware(filter func(*gin.Context) bool) gin.HandlerFunc {
 			zap.String("path", ctx.Request.URL.Path),
 			zap.String("params", ctx.Request.URL.RawQuery),
 			zap.Any("body", body),
-			zap.String("token", ctx.GetHeader(consts.UserTokenKey)),
+			zap.String("token", logger.MaskToken(ctx.GetHeader(consts.UserTokenKey))),
 		}
 		var responseBody bytes.Buffer
 		multiWriter := io.MultiWriter(ctx.Writer, &responseBody)
