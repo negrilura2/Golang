@@ -36,6 +36,7 @@ biz_conf:
   lark_group_id:
   mobile_secret: "mall-demo-secret"
   biz_secret: ""
+  captcha_secret:
 
 storage:
   secret_id: ""

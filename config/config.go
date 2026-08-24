@@ -84,9 +84,10 @@ type AppConf struct {
 }
 
 type BizConf struct {
-	LarkGroupID  string `yaml:"lark_group_id"`
-	MobileSecret string `yaml:"mobile_secret"`
-	BizSecret    string `yaml:"biz_secret"`
+	LarkGroupID   string `yaml:"lark_group_id"`
+	MobileSecret  string `yaml:"mobile_secret"`
+	BizSecret     string `yaml:"biz_secret"`
+	CaptchaSecret string `yaml:"captcha_secret"`
 }
 
 type Redis struct {
@@ -218,7 +219,9 @@ func (c *Config) Validate() []error {
 	if c.Server.Env == "" {
 		errs = append(errs, errors.New("Server.Env 不能为空"))
 	}
-
+	if c.BizConf.CaptchaSecret == "" {
+		errs = append(errs, errors.New("BizConf.CaptchaSecret 不能为空"))
+	}
 	return errs
 }
 func overrideFromEnv(c *Config) {

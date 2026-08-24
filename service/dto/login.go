@@ -11,8 +11,8 @@ type GetVerifyCaptchaReq struct {
 	Sign string `form:"sign"` // 秘钥固定加密： md5(once+daqing2025+ts) 转小写
 }
 
-func (r *GetVerifyCaptchaReq) CheckSign() bool {
-	return r.Sign == tools.Sha256Hash(fmt.Sprintf("%s%s%d", r.Once, "daqing2025", r.Time))
+func (r *GetVerifyCaptchaReq) CheckSign(salt string) bool {
+	return r.Sign == tools.Sha256Hash(fmt.Sprintf("%s%s%d", r.Once, salt, r.Time))
 }
 
 type GetVerifyCaptchaResp struct {

@@ -15,7 +15,7 @@ func (c *Ctrl) GetSmsCodeCaptcha(ctx *gin.Context) {
 		api.WriteResp(ctx, nil, common.ParamErr.WithErr(err))
 		return
 	}
-	pass := req.CheckSign()
+	pass := req.CheckSign(c.adaptor.GetConfig().BizConf.CaptchaSecret)
 	if !pass {
 		api.WriteResp(ctx, nil, common.ParamErr)
 		return
