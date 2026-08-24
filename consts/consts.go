@@ -24,6 +24,7 @@ const (
 const (
 	ExpireTokenDueDuration = 200
 	OrderCalcFeeExpire     = time.Minute * 10
+	CourseInfoCacheExpire  = time.Minute * 10
 )
 
 const (

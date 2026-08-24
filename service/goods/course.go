@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"mall/adaptor/repo/model"
 	"mall/common"
+	"mall/consts"
 	"mall/service/do"
 	"mall/service/dto"
 	"mall/utils/logger"
@@ -32,11 +33,14 @@ func (s *Service) CreateCourse(ctx context.Context, user *common.AdminUser, req 
 		logger.Error("CreateCourse CreateCourse error", zap.Any("req", req), zap.Error(err))
 		return 0, common.DatabaseErr.WithErr(err)
 	}
+	if derr := s.rdsCourse.DelCourseInfo(ctx, courseID); derr != nil {
+		logger.Error("CreateCourse DelCourseInfo error", zap.Error(derr), zap.Int64("id", courseID))
+	}
 	return courseID, common.OK
 }
 
 func (s *Service) GetCourseInfo(ctx context.Context, req *dto.CourseInfoReq) (*dto.CourseDto, common.Errno) {
-	course, err := s.course.GetCourseInfoById(ctx, req.ID)
+	course, err := s.getCourseInfoCached(ctx, req.ID)
 	if err != nil {
 		logger.Error("GetCourseInfo GetCourseInfoById error", zap.Any("req", req), zap.Error(err))
 		return nil, common.DatabaseErr.WithErr(err)
@@ -93,6 +97,9 @@ func (s *Service) UpdateCourse(ctx context.Context, user *common.AdminUser, req 
 		logger.Error("UpdateCourse UpdateCourse error", zap.Any("req", req), zap.Error(err))
 		return common.DatabaseErr.WithErr(err)
 	}
+	if derr := s.rdsCourse.DelCourseInfo(ctx, req.ID); derr != nil {
+		logger.Error("UpdateCourse DelCourseInfo error", zap.Error(derr), zap.Int64("id", req.ID))
+	}
 	return common.OK
 }
 
@@ -105,6 +112,9 @@ func (s *Service) UpdateCourseStatus(ctx context.Context, user *common.AdminUser
 	if err != nil {
 		logger.Error("UpdateCourseStatus UpdateCourseStatus error", zap.Any("req", req), zap.Error(err))
 		return common.DatabaseErr.WithErr(err)
+	}
+	if derr := s.rdsCourse.DelCourseInfo(ctx, req.ID); derr != nil {
+		logger.Error("UpdateCourseStatus DelCourseInfo error", zap.Error(derr), zap.Int64("id", req.ID))
 	}
 	return common.OK
 }
@@ -479,4 +489,25 @@ func (s *Service) GetPurchasedCourseList(ctx context.Context, user *common.UserI
 		Total: count,
 		Pager: req.Pager,
 	}, common.OK
+}
+
+func (s *Service) getCourseInfoCached(ctx context.Context, id int64) (*model.CourseGood, error) {
+	cacheStr, err := s.rdsCourse.GetCourseInfo(ctx, id)
+	if err == nil {
+		//命中，cacheStr里是一段JSON
+		course := &model.CourseGood{}
+		if jerr := json.Unmarshal([]byte(cacheStr), course); jerr == nil {
+			return course, nil
+		}
+	}
+	course, err := s.course.GetCourseInfoById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	data, _ := json.Marshal(course)
+	if serr := s.rdsCourse.SetCourseInfo(ctx, id, string(data), consts.CourseInfoCacheExpire); serr != nil {
+		logger.Error("getCourseInfoCached SetCourseInfo error", zap.Error(serr), zap.Int64("id", id))
+	}
+	return course, nil
+
 }

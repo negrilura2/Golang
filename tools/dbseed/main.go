@@ -63,6 +63,12 @@ func main() {
 			os.Exit(1)
 		}
 		seedApp(os.Args[2], os.Args[3], os.Args[4])
+	case "cache":
+		if len(os.Args) < 3 {
+			usage()
+			os.Exit(1)
+		}
+		cacheGet(os.Args[2])
 	default:
 		usage()
 		os.Exit(1)
@@ -210,7 +216,24 @@ func list() {
 		fmt.Printf("id=%d user_id=%d mobile_sha256=%s mobile_aes=%s\n", m.ID, m.UserID, m.MobileSha256, m.MobileAes)
 	}
 }
-
+func cacheGet(idStr string) {
+	rds := redis.NewClient(&redis.Options{Addr: "127.0.0.1:6379"})
+	defer rds.Close()
+	redisKey := fmt.Sprintf("%s:course:info:%s", serverPrefix, idStr)
+	v, err := rds.Get(redisKey).Result()
+	if err == redis.Nil {
+		fmt.Printf("key=%s 不存在（未命中或已经失效）\n", redisKey)
+		return
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("key=%s\n val=%s\n", redisKey, v)
+	//  - ② 返回值要接住：Get 返回 (值, error)，不接住 = 白查
+	//  - ③ redis.Nil：key 不存在的哨兵错误，打印"未命中"而不是当真的 error
+	//  - ① defer rds.Close()：连接关掉，别一直挂着（你 errcount 有、cacheGet 漏了）
+	//  - ④ 错误处理：Redis 连不上时 log.Fatal 而不是假装成功
+}
 func errcount(mobile string) {
 	rds := redis.NewClient(&redis.Options{Addr: "127.0.0.1:6379"})
 	defer rds.Close()

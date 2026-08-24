@@ -151,7 +151,6 @@ func (s *Course) ListCourse(ctx context.Context, req *do.CourseList) ([]*model.C
 	if req.Status != 0 {
 		tx = tx.Where(qs.Status.Eq(req.Status))
 	}
-	req.UserID = 1
 	if req.UserID != 0 {
 		existSubQuery := s.db.Model(&model.UserCourseGood{}).Select("1").Where(
 			uqs.UserID.Eq(req.UserID),

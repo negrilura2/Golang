@@ -2,6 +2,7 @@ package goods
 
 import (
 	"mall/adaptor"
+	"mall/adaptor/redis"
 	"mall/adaptor/repo/admin"
 	"mall/adaptor/repo/goods"
 	"mall/adaptor/repo/order"
@@ -20,6 +21,7 @@ type Service struct {
 	course     goods.ICourse
 	order      order.IOrder
 	userCourse user.IUserCourse
+	rdsCourse  redis.ICourse
 }
 
 func NewService(adaptor adaptor.IAdaptor) *Service {
@@ -32,5 +34,6 @@ func NewService(adaptor adaptor.IAdaptor) *Service {
 		course:     goods.NewCourse(adaptor),
 		userCourse: user.NewUserCourse(adaptor),
 		order:      order.NewOrder(adaptor),
+		rdsCourse:  redis.NewCourse(adaptor),
 	}
 }
