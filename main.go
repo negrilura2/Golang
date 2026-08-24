@@ -16,7 +16,9 @@ import (
 func main() {
 	conf := config.InitConfig()
 	logger.SetLevel(conf.Server.LogLevel)
-
+	if errs := conf.Validate(); len(errs) > 0 {
+		panic(errors.Join(errs...))
+	}
 	dbClient, err := initMysql(&conf.Mysql)
 	handleErr(err)
 	logger.Debug("mysql connect success")

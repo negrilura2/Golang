@@ -1,3 +1,4 @@
 mall_local.yml
 mall_local.local.yml
 .env
+adaptor/repo/gen.yaml

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/go-viper/mapstructure/v2"
@@ -9,6 +10,7 @@ import (
 	_ "github.com/spf13/viper/remote"
 	"gopkg.in/yaml.v3"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -185,4 +187,35 @@ func getFromLocal() (*Config, error) {
 		return &tempConf, nil
 	}
 	return nil, fmt.Errorf("local config file not found ,file_name: %s", localConfigPath)
+}
+func (c *Config) Validate() []error {
+	var errs []error
+
+	if c.Mysql.Host == "" {
+		errs = append(errs, errors.New("mysql.host 不能为空"))
+	}
+	if c.Mysql.Port == 0 {
+		errs = append(errs, errors.New("mysql.port 不能为空"))
+	}
+	if c.Mysql.User == "" {
+		errs = append(errs, errors.New("mysql.User 不能为空"))
+	}
+	if c.Mysql.Database == "" {
+		errs = append(errs, errors.New("mysql.Database 不能为空"))
+	}
+	if c.Redis.Addr == "" {
+		errs = append(errs, errors.New("redis.Addr 不能为空"))
+	}
+	if c.BizConf.MobileSecret == "" {
+		errs = append(errs, errors.New("BizConf.MobileSecret 不能为空"))
+	}
+	n := len(c.BizConf.MobileSecret)
+	if n != 16 && n != 24 && n != 32 {
+		errs = append(errs, errors.New("BizConf.MobileSecret长度= "+strconv.Itoa(n)+"不为16/24/32"))
+	}
+	if c.Server.Env == "" {
+		errs = append(errs, errors.New("Server.Env 不能为空"))
+	}
+
+	return errs
 }
