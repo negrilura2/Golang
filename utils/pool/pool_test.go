@@ -1,24 +1,28 @@
 package pool
 
 import (
-	"fmt"
 	"testing"
+	"time"
 )
 
-func TestNewPoolWithSize(t *testing.T) {
-	pool := NewPoolWithSize(1)
-	defer pool.Release()
+func TestPoolWaitNoDeadlock(t *testing.T) {
+	p := NewPoolWithSize(2)
+	defer p.Release()
 
-	pool.RunGo(func() {
-		panic("test")
-		println("hello world1")
-	})
-	pool.RunGo(func() {
-		println("hello world2")
-		panic("test")
-	})
-
-	pool.Wait()
-
-	fmt.Println("done all")
+	done := make(chan struct{})
+	go func() {
+		p.RunGo(func() {
+			panic("模拟任务崩溃")
+		})
+		p.RunGo(func() {
+			time.Sleep(100 * time.Millisecond)
+		})
+		p.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("死锁： Wait 2 秒没返回")
+	}
 }
