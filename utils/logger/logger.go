@@ -141,3 +141,16 @@ func MaskToken(token string) string {
 	}
 	return token[:8] + "***"
 }
+
+type ctxKey struct{}
+
+func WithRequestID(ctx context.Context, rid string) context.Context {
+	return context.WithValue(ctx, ctxKey{}, rid)
+}
+
+func FromContext(ctx context.Context) *zap.Logger {
+	if rid, ok := ctx.Value(ctxKey{}).(string); ok && rid != "" {
+		return logger.With(zap.String("request_id", rid))
+	}
+	return logger
+}

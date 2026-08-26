@@ -506,7 +506,7 @@ func (s *Service) getCourseInfoCached(ctx context.Context, id int64) (*model.Cou
 	}
 	data, _ := json.Marshal(course)
 	if serr := s.rdsCourse.SetCourseInfo(ctx, id, string(data), consts.CourseInfoCacheExpire); serr != nil {
-		logger.Error("getCourseInfoCached SetCourseInfo error", zap.Error(serr), zap.Int64("id", id))
+		logger.FromContext(ctx).Error("getCourseInfoCached SetCourseInfo error", zap.Error(serr), zap.Int64("id", id))
 	}
 	return course, nil
 

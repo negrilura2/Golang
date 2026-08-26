@@ -1,6 +1,6 @@
 version: "0.1"
 database:
-  dsn: "root:123456@tcp(127.0.0.1:3306)/edu.mall?charset=utf8mb4&parseTime=true&loc=Local"
+  dsn: "root:your_password@tcp(127.0.0.1:3306)/edu.mall?charset=utf8mb4&parseTime=true&loc=Local"
   db: "mysql"
   tables:
     - user

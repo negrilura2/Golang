@@ -26,6 +26,7 @@ func NewApp(port int, router IRouter) *App {
 	// Recover 中间件，全局捕获panic
 	engine.Use(gin.Recovery())
 
+	engine.Use(RequestIDMiddleware())
 	// 日志中间件,自定义过滤器，某些接口不需要记录日志
 	engine.Use(AccessLogMiddleware(router.AccessRecordFilter))
 

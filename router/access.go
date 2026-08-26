@@ -43,6 +43,7 @@ func AccessLogMiddleware(filter func(*gin.Context) bool) gin.HandlerFunc {
 			zap.String("params", ctx.Request.URL.RawQuery),
 			zap.Any("body", body),
 			zap.String("token", logger.MaskToken(ctx.GetHeader(consts.UserTokenKey))),
+			zap.String("request_id", ctx.GetString(consts.RequestIDKey)),
 		}
 		var responseBody bytes.Buffer
 		multiWriter := io.MultiWriter(ctx.Writer, &responseBody)

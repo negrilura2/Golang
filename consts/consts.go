@@ -12,6 +12,8 @@ const (
 	UserTokenKey    = "token"
 	CustomerUserKey = "user_key"
 	AdminUserKey    = "admin_user_key"
+
+	RequestIDKey = "X-Request-ID"
 )
 
 const (

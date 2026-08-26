@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 )
 
@@ -60,7 +61,7 @@ func AESDecrypt(cryptotext string, key []byte) ([]byte, error) {
 	origData := make([]byte, len(cryptoBytes))
 	blockMode.CryptBlocks(origData, cryptoBytes)
 
-	return PKCS7UnPadding(origData), nil
+	return PKCS7UnPadding(origData)
 }
 
 // PKCS7Padding 填充函数
@@ -71,11 +72,19 @@ func PKCS7Padding(src []byte, blockSize int) []byte {
 }
 
 // PKCS7UnPadding 去除填充函数
-func PKCS7UnPadding(src []byte) []byte {
+func PKCS7UnPadding(src []byte) ([]byte, error) {
 	length := len(src)
-	unpadding := int(src[length-1])
-	if unpadding < 1 || unpadding > aes.BlockSize {
-		unpadding = 0
+	if length == 0 {
+		return nil, errors.New("填充字符串为空")
 	}
-	return src[:(length - unpadding)]
+	unpadding := int(src[length-1])
+	if unpadding < 1 || unpadding > aes.BlockSize || unpadding > length {
+		return nil, errors.New("unpadding不符合要求")
+	}
+	for i := len(src) - unpadding; i < len(src); i++ {
+		if src[i] != byte(unpadding) {
+			return nil, errors.New("unpadding不匹配")
+		}
+	}
+	return src[:(length - unpadding)], nil
 }
