@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/go-redis/redis"
 	"github.com/gogf/gf/util/gconv"
+	"go.uber.org/zap"
 	"mall/adaptor"
 	"mall/config"
+	"mall/utils/logger"
 	"time"
 )
 
@@ -36,6 +38,8 @@ type IOrder interface {
 	SetOrderRefundResult(ctx context.Context, orderID int64) error
 	GetOrderRefundResult(ctx context.Context) (map[int64]int64, error)
 	DelOrderRefundResult(ctx context.Context, orderID int64) error
+
+	RenewOrderLockLoop(ctx context.Context, orderID int64, uuid string, renewInterval, lockTTL time.Duration) (stop func(), err error)
 }
 
 func fmtOrderCalcFeeKey(feeUUID string) string {
@@ -199,4 +203,35 @@ func (o *Order) DelOrderRefundResult(ctx context.Context, orderID int64) error {
 	redisKey := fmtOrderRefundResultHashKey()
 	_, err := o.redis.HDel(redisKey, gconv.String(orderID)).Result()
 	return err
+}
+
+func (o *Order) renewOrderLock(ctx context.Context, orderID int64, uuid string, lockTTL time.Duration) (bool, error) {
+	redisKey := fmtOrderLockKey(orderID)
+	ok, err := luaRenew.Run(o.redis, []string{redisKey}, uuid, lockTTL.Seconds()).Bool()
+	if ok && err == nil {
+		return true, nil
+	}
+	return false, err
+}
+func (o *Order) RenewOrderLockLoop(ctx context.Context, orderID int64, uuid string, renewInterval, lockTTL time.Duration) (stop func(), err error) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(renewInterval):
+				ok, err := o.renewOrderLock(ctx, orderID, uuid, lockTTL)
+				if err != nil {
+					logger.Error("RenewOrderLock error", zap.Error(err), zap.Int64("order_id", orderID))
+				}
+				if !ok {
+					logger.Warn("RenewOrderLock lost, lock taken by others", zap.Int64("order_id", orderID))
+					return
+				}
+			}
+		}
+	}()
+	return cancel, nil
 }

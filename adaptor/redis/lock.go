@@ -9,9 +9,8 @@ import (
 )
 
 type ILocker interface {
-	// TODO 把锁进行uuid处理，保证自己设置的锁，不能被其他地方所解锁
-	GetLock(ctx context.Context, lockKey string) (bool, error)
-	UnLock(ctx context.Context, lockKey string) error
+	GetLock(ctx context.Context, uuid, lockKey string) (bool, error)
+	UnLock(ctx context.Context, uuid, lockKey string) error
 	AwaitLock(ctx context.Context, lockKey string, timeout time.Duration) error
 }
 
@@ -24,16 +23,16 @@ func NewLocker(adaptor adaptor.IAdaptor) *Locker {
 		redis: adaptor.GetRedis(),
 	}
 }
-func (l *Locker) GetLock(ctx context.Context, lockKey string) (bool, error) {
-	lockSuccess, err := l.redis.SetNX(lockKey, 1, time.Second*60).Result()
+func (l *Locker) GetLock(ctx context.Context, uuid, lockKey string) (bool, error) {
+	lockSuccess, err := l.redis.SetNX(lockKey, uuid, time.Second*60).Result()
 	if err != nil {
 		return false, err
 	}
 	return lockSuccess, nil
 }
 
-func (l *Locker) UnLock(ctx context.Context, lockKey string) error {
-	_, err := l.redis.Del(lockKey).Result()
+func (l *Locker) UnLock(ctx context.Context, uuid, lockKey string) error {
+	err := luaUnlock.Run(l.redis, []string{lockKey}, uuid).Err()
 	if err != nil {
 		return err
 	}

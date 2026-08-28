@@ -51,6 +51,12 @@ func (s *Service) WechatPaymentCallback(ctx context.Context, notifyReq *wechat.V
 		return err
 	}
 	defer s.rdsOrder.UnLockOrder(ctx, order.ID, orderUUID)
+	stopRenew, err := s.rdsOrder.RenewOrderLockLoop(ctx, order.ID, orderUUID, consts.RenewInterval, consts.OrderLockTTL)
+	if err != nil {
+		logger.Error("RenewOrderLockLoop start error", zap.Error(err), zap.Int64("order_id", order.ID))
+	} else {
+		defer stopRenew()
+	}
 
 	paymentTime, err := time.Parse(time.RFC3339, result.SuccessTime)
 	if err != nil {

@@ -145,3 +145,8 @@ const (
 	DateTypeQuarter = 3
 	DateTypeYear    = 4
 )
+
+const (
+	RenewInterval = 3 * time.Second
+	OrderLockTTL  = 10 * time.Second
+)

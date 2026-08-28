@@ -48,7 +48,12 @@ func (s *Service) WechatRefundCallback(ctx context.Context, notifyReq *wechat.V3
 		return err
 	}
 	defer s.rdsOrder.UnLockOrder(ctx, orderRefund.OrderID, orderUUID)
-
+	stopRenew, err := s.rdsOrder.RenewOrderLockLoop(ctx, orderRefund.OrderID, orderUUID, consts.RenewInterval, consts.OrderLockTTL)
+	if err != nil {
+		logger.Error("RenewOrderLockLoop start error", zap.Error(err), zap.Int64("order_id", orderRefund.OrderID))
+	} else {
+		defer stopRenew()
+	}
 	if orderRefund.Status != consts.RefundStatusProcessing {
 		return s.rdsOrder.DelOrderRefundResult(ctx, orderRefund.OrderID)
 	}
@@ -134,7 +139,12 @@ func (s *Service) OrderRefund(ctx context.Context, user *common.AdminUser, req *
 		return common.OrderLockedErr
 	}
 	defer s.rdsOrder.UnLockOrder(ctx, req.OrderID, orderUUID)
-
+	stopRenew, err := s.rdsOrder.RenewOrderLockLoop(ctx, req.OrderID, orderUUID, consts.RenewInterval, consts.OrderLockTTL)
+	if err != nil {
+		logger.Error("RenewOrderLockLoop start error", zap.Error(err), zap.Int64("order_id", req.OrderID))
+	} else {
+		defer stopRenew()
+	}
 	order, err := s.order.GetOrderByID(ctx, req.OrderID)
 	if err != nil {
 		logger.Error("OrderRefund GetOrderByID error", zap.Error(err), zap.Any("req", req))
@@ -203,7 +213,12 @@ func (s *Service) QueryOrderRefundResult(ctx context.Context, orderID, orderTime
 		return err
 	}
 	defer s.rdsOrder.UnLockOrder(ctx, orderID, orderUUID)
-
+	stopRenew, err := s.rdsOrder.RenewOrderLockLoop(ctx, orderID, orderUUID, consts.RenewInterval, consts.OrderLockTTL)
+	if err != nil {
+		logger.Error("RenewOrderLockLoop start error", zap.Error(err), zap.Int64("order_id", orderID))
+	} else {
+		defer stopRenew()
+	}
 	orderRefund, err := s.order.GetOrderRefundByOrderID(ctx, orderID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.Error("QueryOrderRefundResult GetOrderRefundByOrderID error", zap.Error(err), zap.Any("order_id", orderID))

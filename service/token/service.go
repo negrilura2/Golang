@@ -12,6 +12,7 @@ import (
 	"mall/config"
 	"mall/consts"
 	"mall/utils/logger"
+	"mall/utils/tools"
 	"time"
 )
 
@@ -51,11 +52,13 @@ func (s *Service) lockTokenKeyFmt(appCode int32) string {
 }
 
 func (s *Service) updateToken(ctx context.Context, getToken GetTokenFun, lockKey, cacheKey string) (*AccessToken, error) {
-	locked, err := s.locker.GetLock(ctx, lockKey)
+	tokenUuid := tools.UUIDHex()
+	locked, err := s.locker.GetLock(ctx, tokenUuid, lockKey)
 	if err != nil {
 		return nil, err
 	}
 	if locked {
+		defer s.locker.UnLock(ctx, tokenUuid, lockKey)
 		token, err := getToken()
 		if err != nil {
 			logger.Error("updateToken getToken error", zap.Error(err))

@@ -192,7 +192,12 @@ func (s *Service) OrderPayLater(ctx context.Context, user *common.UserInfo, req 
 		return nil, common.OrderLockedErr
 	}
 	defer s.rdsOrder.UnLockOrder(ctx, req.OrderID, orderUUID)
-
+	stopRenew, err := s.rdsOrder.RenewOrderLockLoop(ctx, req.OrderID, orderUUID, consts.RenewInterval, consts.OrderLockTTL)
+	if err != nil {
+		logger.Error("RenewOrderLockLoop start error", zap.Error(err), zap.Int64("order_id", req.OrderID))
+	} else {
+		defer stopRenew()
+	}
 	paymentIng, err := s.rdsOrder.CheckInPayment(ctx, req.OrderID)
 	if err != nil && !errors.Is(err, redis.Nil) {
 		logger.Error("OrderPayLater CheckInPayment error", zap.Error(err), zap.Any("req", req))
@@ -317,7 +322,12 @@ func (s *Service) CancelOrder(ctx context.Context, user *common.UserInfo, req *d
 		return common.OrderLockedErr
 	}
 	defer s.rdsOrder.UnLockOrder(ctx, req.OrderID, orderUUID)
-
+	stopRenew, err := s.rdsOrder.RenewOrderLockLoop(ctx, req.OrderID, orderUUID, consts.RenewInterval, consts.OrderLockTTL)
+	if err != nil {
+		logger.Error("RenewOrderLockLoop start error", zap.Error(err), zap.Int64("order_id", req.OrderID))
+	} else {
+		defer stopRenew()
+	}
 	order, err := s.order.GetOrderByID(ctx, req.OrderID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
