@@ -65,28 +65,28 @@ func (l GormLogger) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
 }
 
 func (l GormLogger) writef(str string, args ...interface{}) string {
-	return fmt.Sprintf(str, args)
+	return fmt.Sprintf(str, args...)
 }
 
 func (l GormLogger) Info(ctx context.Context, str string, args ...interface{}) {
 	if l.LogLevel < gormlogger.Info {
 		return
 	}
-	l.logger.Warn(l.writef(str, args))
+	l.logger.Warn(l.writef(str, args...))
 }
 
 func (l GormLogger) Error(ctx context.Context, str string, args ...interface{}) {
 	if l.LogLevel < gormlogger.Error {
 		return
 	}
-	l.logger.Error(l.writef(str, args))
+	l.logger.Error(l.writef(str, args...))
 }
 
 func (l GormLogger) Warn(ctx context.Context, str string, args ...interface{}) {
 	if l.LogLevel < gormlogger.Warn {
 		return
 	}
-	l.logger.Warn(l.writef(str, args))
+	l.logger.Warn(l.writef(str, args...))
 }
 func (l GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
 	if l.LogLevel <= 0 {

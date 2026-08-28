@@ -63,7 +63,7 @@ func (l *Lark) GetLarkUserInfo(ctx context.Context, userAccessToken string) (*do
 	}
 
 	if resp.Code != 0 {
-		return nil, fmt.Errorf("code:%s, msg:%s", resp.Code, resp.Msg)
+		return nil, fmt.Errorf("code:%d, msg:%s", resp.Code, resp.Msg)
 	}
 
 	return &resp.Data, nil
