@@ -13,8 +13,8 @@ import (
 
 type IUserCourse interface {
 	ListUserCourse(ctx context.Context, req *do.ListUserCourse) ([]*model.UserCourseGood, int64, error)
-	CreateUserCourse(ctx context.Context, req *do.CreateUserCourse) error
-	DeleteUserCourse(ctx context.Context, req *do.DeleteUserCourse) error
+	CreateUserCourse(ctx context.Context, tx *gorm.DB, req *do.CreateUserCourse) error
+	DeleteUserCourse(ctx context.Context, tx *gorm.DB, req *do.DeleteUserCourse) error
 }
 
 type UserCourse struct {
@@ -41,11 +41,11 @@ func (s *UserCourse) ListUserCourse(ctx context.Context, req *do.ListUserCourse)
 	return list, count, nil
 }
 
-func (s *UserCourse) CreateUserCourse(ctx context.Context, req *do.CreateUserCourse) error {
+func (s *UserCourse) CreateUserCourse(ctx context.Context, tx *gorm.DB, req *do.CreateUserCourse) error {
 	if req.CourseList == nil || len(req.CourseList) == 0 {
 		return nil
 	}
-	qs := query.Use(s.db).UserCourseGood
+	qs := query.Use(tx).UserCourseGood
 	addList := make([]*model.UserCourseGood, 0)
 	lo.ForEach(req.CourseList, func(item do.BuyCourseGoods, index int) {
 		addList = append(addList, &model.UserCourseGood{
@@ -62,8 +62,8 @@ func (s *UserCourse) CreateUserCourse(ctx context.Context, req *do.CreateUserCou
 	return qs.WithContext(ctx).CreateInBatches(addList, 100)
 }
 
-func (s *UserCourse) DeleteUserCourse(ctx context.Context, req *do.DeleteUserCourse) error {
-	qs := query.Use(s.db).UserCourseGood
+func (s *UserCourse) DeleteUserCourse(ctx context.Context, tx *gorm.DB, req *do.DeleteUserCourse) error {
+	qs := query.Use(tx).UserCourseGood
 	_, err := qs.WithContext(ctx).
 		Where(qs.UserID.Eq(req.UserID),
 			qs.OrderID.Eq(req.OrderID),

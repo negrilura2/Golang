@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"fmt"
 	"github.com/gogf/gf/util/gconv"
 	"github.com/samber/lo"
 	"gorm.io/gorm"
@@ -145,7 +146,7 @@ func (o *Order) UpdateOrderPaySuccess(ctx context.Context, req *do.UpdateOrderPa
 		if res.RowsAffected == 0 {
 			return nil
 		}
-		return req.BenefitFunc()
+		return req.BenefitFunc(tx)
 	})
 }
 
@@ -238,8 +239,19 @@ func (o *Order) OrderRefund(ctx context.Context, req *do.OrderRefund) (int64, er
 		if err != nil {
 			return err
 		}
-		return req.RefundFun(ctx)
+		return nil
 	})
+	err = req.RefundFun(ctx)
+	if err != nil {
+		qs := query.Use(o.db).OrderRefund
+		updateMap := map[string]interface{}{
+			qs.Status.ColumnName().String(): consts.RefundStatusException,
+		}
+		if _, uerr := qs.WithContext(ctx).Where(qs.ID.Eq(refund.ID)).Updates(updateMap); uerr != nil {
+			return refund.ID, fmt.Errorf("refund status update failed: %w, refund fun: %w", uerr, err)
+		}
+		return refund.ID, err
+	}
 	return refund.ID, err
 }
 
@@ -268,6 +280,6 @@ func (o *Order) OrderRefundResult(ctx context.Context, req *do.OrderRefundResult
 		if err != nil {
 			return err
 		}
-		return req.RefundDeliveryFun(ctx)
+		return req.RefundDeliveryFun(ctx, tx)
 	})
 }

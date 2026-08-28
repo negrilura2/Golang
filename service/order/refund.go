@@ -67,8 +67,8 @@ func (s *Service) WechatRefundCallback(ctx context.Context, notifyReq *wechat.V3
 		logger.Error("WechatRefundCallback Unmarshal error", zap.Error(err), zap.Any("order_id", orderRefund.OrderID))
 		return err
 	}
-	handleFun := func(ctx context.Context) error {
-		return s.userCourse.DeleteUserCourse(ctx, &do.DeleteUserCourse{
+	handleFun := func(ctx context.Context, tx *gorm.DB) error {
+		return s.userCourse.DeleteUserCourse(ctx, tx, &do.DeleteUserCourse{
 			UserID:       orderRefund.UserID,
 			OrderID:      orderRefund.OrderID,
 			OrderItemIds: itemIds,
@@ -239,8 +239,8 @@ func (s *Service) QueryOrderRefundResult(ctx context.Context, orderID, orderTime
 		logger.Error("QueryOrderRefundResult Unmarshal error", zap.Error(err), zap.Any("order_id", orderID))
 		return err
 	}
-	handleFun := func(ctx context.Context) error {
-		return s.userCourse.DeleteUserCourse(ctx, &do.DeleteUserCourse{
+	handleFun := func(ctx context.Context, tx *gorm.DB) error {
+		return s.userCourse.DeleteUserCourse(ctx, tx, &do.DeleteUserCourse{
 			UserID:       orderRefund.UserID,
 			OrderID:      orderRefund.OrderID,
 			OrderItemIds: itemIds,

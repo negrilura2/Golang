@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/go-pay/gopay/wechat/v3"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 	"mall/adaptor/repo/model"
 	"mall/consts"
 	"mall/service/do"
@@ -55,8 +56,8 @@ func (s *Service) WechatPaymentCallback(ctx context.Context, notifyReq *wechat.V
 	if err != nil {
 		paymentTime = time.Now()
 	}
-	benefitFunc := func() error {
-		return s.userBenefitPackage(ctx, order, paymentTime)
+	benefitFunc := func(tx *gorm.DB) error {
+		return s.userBenefitPackage(ctx, tx, order, paymentTime)
 	}
 	err = s.order.UpdateOrderPaySuccess(ctx, &do.UpdateOrderPaySuccess{
 		OrderID:       order.ID,
@@ -132,8 +133,8 @@ func (s *Service) handlerOrderPayResult(ctx context.Context, order *model.Order,
 	if err != nil {
 		paymentTime = time.Now()
 	}
-	benefitFunc := func() error {
-		return s.userBenefitPackage(ctx, order, paymentTime)
+	benefitFunc := func(tx *gorm.DB) error {
+		return s.userBenefitPackage(ctx, tx, order, paymentTime)
 	}
 	err = s.order.UpdateOrderPaySuccess(ctx, &do.UpdateOrderPaySuccess{
 		OrderID:       order.ID,
@@ -149,7 +150,7 @@ func (s *Service) handlerOrderPayResult(ctx context.Context, order *model.Order,
 	return nil
 }
 
-func (s *Service) userBenefitPackage(ctx context.Context, order *model.Order, paymentTime time.Time) error {
+func (s *Service) userBenefitPackage(ctx context.Context, tx *gorm.DB, order *model.Order, paymentTime time.Time) error {
 	orderItems, err := s.order.GetOrderItems(ctx, order.ID)
 	if err != nil {
 		logger.Error("userBenefitPackage GetOrderItems error", zap.Error(err), zap.Any("order_id", order.ID))
@@ -176,7 +177,7 @@ func (s *Service) userBenefitPackage(ctx context.Context, order *model.Order, pa
 			ServiceExpireTime: serviceTime,
 		})
 	}
-	err = s.userCourse.CreateUserCourse(ctx, &do.CreateUserCourse{
+	err = s.userCourse.CreateUserCourse(ctx, tx, &do.CreateUserCourse{
 		UserId:     order.UserID,
 		OrderID:    order.ID,
 		BuyTime:    paymentTime.UnixMilli(),

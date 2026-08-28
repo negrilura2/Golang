@@ -2,6 +2,7 @@ package do
 
 import (
 	"context"
+	"gorm.io/gorm"
 	"mall/adaptor/repo/model"
 	"mall/common"
 	"time"
@@ -38,7 +39,7 @@ type UpdateOrderPaySuccess struct {
 	TradeType     string
 	TransactionID string
 	PaymentAt     time.Time
-	BenefitFunc   func() error
+	BenefitFunc   func(tx *gorm.DB) error
 }
 
 type GetOrderList struct {
@@ -75,7 +76,7 @@ type OrderRefundResult struct {
 	RefundID          string
 	Status            int32
 	SuccessTime       int64
-	RefundDeliveryFun func(ctx context.Context) error
+	RefundDeliveryFun func(ctx context.Context, tx *gorm.DB) error
 }
 
 type OrderStat struct {
