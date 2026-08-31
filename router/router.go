@@ -201,4 +201,7 @@ func (r *Router) customerRoute(root *gin.RouterGroup) {
 	cstRoot.POST("/v1/order/cancel", r.customer.CancelOrder)      // 取消订单，未支付前都可以取消
 	cstRoot.POST("/v1/order/list", r.customer.GetOrderList)       // 我的订单列表
 	cstRoot.POST("v1/order/info", r.customer.GetOrderInfo)        // 订单详情
+
+	//模拟支付
+	cstRoot.POST("v1/mock/pay", r.customer.MockPay)
 }

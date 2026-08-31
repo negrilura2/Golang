@@ -139,7 +139,7 @@ func (o *Order) UpdateOrderPaySuccess(ctx context.Context, req *do.UpdateOrderPa
 			qs.PaymentAt.ColumnName().String(): req.PaymentAt.UnixMilli(),
 			qs.TradeNo.ColumnName().String():   req.TransactionID,
 		}
-		res := tx.Where(qs.ID.Eq(req.OrderID), qs.Status.Eq(consts.OrderStatusWaitPay)).Updates(updateMap)
+		res := tx.Model(&model.Order{}).Where(qs.ID.Eq(req.OrderID), qs.Status.Eq(consts.OrderStatusWaitPay)).Updates(updateMap)
 		if res.Error != nil {
 			return res.Error
 		}

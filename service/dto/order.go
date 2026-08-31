@@ -181,3 +181,7 @@ type OrderStatResp struct {
 	Total int64           `json:"total"`
 	List  []*OrderStatDto `json:"list"`
 }
+
+type MockPayReq struct {
+	OrderID int64 `json:"order_id"`
+}
