@@ -150,3 +150,10 @@ const (
 	RenewInterval = 3 * time.Second
 	OrderLockTTL  = 10 * time.Second
 )
+
+const (
+	EventOrderPayed      = "ORDER_PAYED"
+	KafkaTopicOrderPayed = "mall.order.payed" // 这条事件的 topic
+
+	KafkaGroupOrderBenefit = "mall-order-benefit" //发权益的消费组
+)

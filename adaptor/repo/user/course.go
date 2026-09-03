@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/samber/lo"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"mall/adaptor"
 	"mall/adaptor/repo/model"
 	"mall/adaptor/repo/query"
@@ -45,7 +46,11 @@ func (s *UserCourse) CreateUserCourse(ctx context.Context, tx *gorm.DB, req *do.
 	if req.CourseList == nil || len(req.CourseList) == 0 {
 		return nil
 	}
-	qs := query.Use(tx).UserCourseGood
+	base := s.db
+	if tx != nil {
+		base = tx
+	}
+	qs := query.Use(base).UserCourseGood
 	addList := make([]*model.UserCourseGood, 0)
 	lo.ForEach(req.CourseList, func(item do.BuyCourseGoods, index int) {
 		addList = append(addList, &model.UserCourseGood{
@@ -59,7 +64,10 @@ func (s *UserCourse) CreateUserCourse(ctx context.Context, tx *gorm.DB, req *do.
 			ServiceExpireTime: item.ServiceExpireTime,
 		})
 	})
-	return qs.WithContext(ctx).CreateInBatches(addList, 100)
+	return qs.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}, {Name: "order_id"}, {Name: "order_item_id"}},
+		DoNothing: true,
+	}).CreateInBatches(addList, 100)
 }
 
 func (s *UserCourse) DeleteUserCourse(ctx context.Context, tx *gorm.DB, req *do.DeleteUserCourse) error {

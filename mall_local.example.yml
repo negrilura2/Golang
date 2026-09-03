@@ -13,7 +13,7 @@ mysql:
   port: 3306
   database: edu.mall
   charset: utf8mb4
-  show_mysql: true
+  show_sql: true
   max_open: 20
   max_idle: 5
 
@@ -68,3 +68,6 @@ app_conf:
     app_name: 飞书
     app_id: cli_aafc74abac785bcf
     app_secret:
+      
+kafka:
+  brokers: localhost:9092

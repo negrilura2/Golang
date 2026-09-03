@@ -34,6 +34,7 @@ type Config struct {
 	BizConf   BizConf           `yaml:"biz_conf"`
 	Storage   Storage           `yaml:"storage"`
 	WechatPay WechatPay         `yaml:"wechat_pay"`
+	Kafka     Kafka             `yaml:"kafka"`
 }
 
 type Server struct {
@@ -42,7 +43,9 @@ type Server struct {
 	EnablePprof bool   `yaml:"enable_pprof"`
 	LogLevel    string `yaml:"log_level"`
 }
-
+type Kafka struct {
+	Brokers []string `yaml:"brokers"`
+}
 type Mysql struct {
 	Dialect  string `yaml:"dialect"`
 	User     string `yaml:"user"`

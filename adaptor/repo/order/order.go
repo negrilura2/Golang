@@ -146,7 +146,7 @@ func (o *Order) UpdateOrderPaySuccess(ctx context.Context, req *do.UpdateOrderPa
 		if res.RowsAffected == 0 {
 			return nil
 		}
-		return req.BenefitFunc(tx)
+		return req.OutboxFunc(tx)
 	})
 }
 

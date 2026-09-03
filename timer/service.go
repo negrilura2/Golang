@@ -3,7 +3,9 @@ package timer
 import (
 	"github.com/go-co-op/gocron"
 	"mall/adaptor"
+	"mall/adaptor/kafka"
 	"mall/adaptor/redis"
+	"mall/adaptor/repo/outbox"
 	"mall/service/order"
 
 	"mall/config"
@@ -15,6 +17,8 @@ type Service struct {
 	schedule *gocron.Scheduler
 	order    *order.Service
 	rdsOrder redis.IOrder
+	outbox   outbox.IOutbox
+	producer *kafka.Producer
 }
 
 func NewService(adaptor adaptor.IAdaptor) *Service {
@@ -23,6 +27,8 @@ func NewService(adaptor adaptor.IAdaptor) *Service {
 		schedule: gocron.NewScheduler(time.Local),
 		order:    order.NewService(adaptor),
 		rdsOrder: redis.NewOrder(adaptor),
+		outbox:   outbox.NewOutbox(adaptor),
+		producer: kafka.NewProducer(adaptor.GetConfig().Kafka.Brokers),
 	}
 }
 
@@ -44,10 +50,18 @@ func (s *Service) Start() {
 		panic(err)
 	}
 
-	// 异步启动，不阻塞
-	s.schedule.StartAsync()
+	//搬运工： 每5s把 outbox 待发布事件搬进 kafka topic
+	_, err = s.schedule.Every(5).Seconds().Do(s.OrderEventPublish)
+	if err != nil {
+		panic(err)
+	}
+	
+	s.schedule.StartAsync() // 异步启动，不阻塞
 }
 
 func (s *Service) Stop() {
 	s.schedule.Stop()
+	if s.producer != nil {
+		_ = s.producer.Close() //进程优雅退出时把连接还掉
+	}
 }

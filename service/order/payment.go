@@ -62,15 +62,13 @@ func (s *Service) WechatPaymentCallback(ctx context.Context, notifyReq *wechat.V
 	if err != nil {
 		paymentTime = time.Now()
 	}
-	benefitFunc := func(tx *gorm.DB) error {
-		return s.userBenefitPackage(ctx, tx, order, paymentTime)
-	}
+	outboxFunc := s.buildOutboxFunc(ctx, order)
 	err = s.order.UpdateOrderPaySuccess(ctx, &do.UpdateOrderPaySuccess{
 		OrderID:       order.ID,
 		PaymentAt:     paymentTime,
 		TradeType:     result.TradeType,
 		TransactionID: result.TransactionId,
-		BenefitFunc:   benefitFunc,
+		OutboxFunc:    outboxFunc,
 	})
 	if err != nil {
 		logger.Error("WechatPaymentCallback UpdateOrderPaySuccess error", zap.Error(err), zap.Any("order_id", order.ID))
@@ -139,15 +137,13 @@ func (s *Service) handlerOrderPayResult(ctx context.Context, order *model.Order,
 	if err != nil {
 		paymentTime = time.Now()
 	}
-	benefitFunc := func(tx *gorm.DB) error {
-		return s.userBenefitPackage(ctx, tx, order, paymentTime)
-	}
+	outboxFunc := s.buildOutboxFunc(ctx, order)
 	err = s.order.UpdateOrderPaySuccess(ctx, &do.UpdateOrderPaySuccess{
 		OrderID:       order.ID,
 		PaymentAt:     paymentTime,
 		TradeType:     resp.TradeType,
 		TransactionID: resp.TransactionId,
-		BenefitFunc:   benefitFunc,
+		OutboxFunc:    outboxFunc,
 	})
 	if err != nil {
 		logger.Error("TimeOutOrderCancel UpdateOrderPaySuccess error", zap.Error(err), zap.Any("order_id", order.ID))
@@ -194,4 +190,17 @@ func (s *Service) userBenefitPackage(ctx context.Context, tx *gorm.DB, order *mo
 		return err
 	}
 	return nil
+}
+
+func (s *Service) buildOutboxFunc(ctx context.Context, order *model.Order) func(tx *gorm.DB) error {
+	return func(tx *gorm.DB) error {
+		payload, err := json.Marshal(map[string]interface{}{
+			"order_id": order.ID,
+			"user_id":  order.UserID,
+		})
+		if err != nil {
+			return err
+		}
+		return s.outbox.CreateOutbox(ctx, tx, consts.EventOrderPayed, string(payload))
+	}
 }

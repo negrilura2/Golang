@@ -48,10 +48,14 @@ type GormLogger struct {
 	IgnoreRecordNotFoundError bool
 }
 
-func NewGormLogger() *GormLogger {
+func NewGormLogger(showSql bool) *GormLogger {
+	level := gormlogger.Warn //默认：只打错误 + 慢SQL（>100ms)
+	if showSql {
+		level = gormlogger.Info //开发开 Info: 每条 SQL 都打
+	}
 	return &GormLogger{
 		logger:                    logger,
-		LogLevel:                  gormlogger.Info,
+		LogLevel:                  level,
 		SlowThreshold:             100 * time.Millisecond,
 		IgnoreRecordNotFoundError: false,
 	}

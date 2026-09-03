@@ -3,6 +3,7 @@ package timer
 import (
 	"context"
 	"go.uber.org/zap"
+	"mall/consts"
 	"mall/utils/logger"
 	"time"
 )
@@ -67,6 +68,38 @@ func (s *Service) OrderRefundQuery() {
 		if err != nil {
 			logger.Error("OrderRefundQuery QueryOrderRefundResult error",
 				zap.Error(err), zap.Int64("order_id", orderID), zap.Time("order_time", time.UnixMilli(orderTime)))
+			continue
+		}
+	}
+}
+
+func (s *Service) OrderEventPublish() {
+	ctx := context.TODO()
+	defer func() {
+		if err := recover(); err != nil {
+			logger.Error("OrderEventPublish panic", zap.Any("err", err))
+		}
+	}()
+	list, err := s.outbox.GetPendingOutbox(ctx, 100) //抓一批待处理的Outbox
+	if err != nil {
+		logger.Error("OrderEventPublish GetPendingOutbox error", zap.Error(err))
+		return
+	}
+	for _, event := range list {
+		switch event.EventType {
+		case consts.EventOrderPayed:
+			topic := consts.KafkaTopicOrderPayed
+			perr := s.producer.Publish(ctx, topic, nil, []byte(event.EventPayload))
+			if perr != nil {
+				logger.Error("OrderEventPublish Publish error", zap.Error(perr))
+				continue
+			}
+			merr := s.outbox.MarkPublished(ctx, event.ID)
+			if merr != nil {
+				logger.Error("OrderEventPublish MarkPublished error", zap.Int64("event_id", event.ID), zap.Error(merr))
+			}
+		default:
+			logger.Error("OrderEventPublish GetEventType error", zap.String("event_type", event.EventType))
 			continue
 		}
 	}

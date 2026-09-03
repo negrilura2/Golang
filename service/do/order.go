@@ -39,7 +39,7 @@ type UpdateOrderPaySuccess struct {
 	TradeType     string
 	TransactionID string
 	PaymentAt     time.Time
-	BenefitFunc   func(tx *gorm.DB) error
+	OutboxFunc    func(tx *gorm.DB) error
 }
 
 type GetOrderList struct {

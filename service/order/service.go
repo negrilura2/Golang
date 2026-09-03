@@ -12,6 +12,7 @@ import (
 	"mall/adaptor/repo/goods"
 	"mall/adaptor/repo/model"
 	"mall/adaptor/repo/order"
+	"mall/adaptor/repo/outbox"
 	"mall/adaptor/repo/user"
 	"mall/adaptor/rpc"
 	"mall/common"
@@ -34,6 +35,7 @@ type Service struct {
 	adminUser  admin.IAdminUser
 	user       user.IUser
 	storage    rpc.IStorage
+	outbox     outbox.IOutbox
 }
 
 func NewService(adaptor adaptor.IAdaptor) *Service {
@@ -52,6 +54,7 @@ func NewService(adaptor adaptor.IAdaptor) *Service {
 		adminUser:  admin.NewAdminUser(adaptor),
 		user:       user.NewUser(adaptor),
 		storage:    rpc.NewStorage(adaptor),
+		outbox:     outbox.NewOutbox(adaptor),
 	}
 }
 
