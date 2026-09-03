@@ -68,11 +68,13 @@ func startServer(conf *config.Config, db *gorm.DB, redis *redis.Client) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := kafka.RunConsumer(consumerCtx,
+		if err := kafka.RunConsumer(
+			consumerCtx,
 			conf.Kafka.Brokers,
 			consts.KafkaTopicOrderPayed,
 			consts.KafkaGroupOrderBenefit,
-			orderSvc.HandleOrderPayedEvent); err != nil {
+			orderSvc.HandleOrderPayedEvent,
+			consts.KafkaTopicOrderPayedDLQ); err != nil {
 			logger.Error("kafka consumer stopped with error", zap.Error(err))
 		}
 	}()

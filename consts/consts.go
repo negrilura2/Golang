@@ -156,4 +156,11 @@ const (
 	KafkaTopicOrderPayed = "mall.order.payed" // 这条事件的 topic
 
 	KafkaGroupOrderBenefit = "mall-order-benefit" //发权益的消费组
+
+	KafkaTopicOrderPayedDLQ = "mall.order.payed.dlq" //支付成功事件的死信队列
+
+)
+
+const (
+	MaxConsumeRetry = 3
 )
