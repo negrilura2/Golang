@@ -1,15 +1,19 @@
 version: '3.8'
 
 services:
-  edu_mall_backend:
-    image: docker.cnb.cool/qingflyfei/edu.mall.backend/dev:1.6.6-f93d4e93  # CNB镜像仓库地址
-    container_name: edu-mall-backend
+  edu-mall-app:
+    build: . #用根目录 Dockerfile 现编
+    image: edu-mall:local
+    container_name: edu-mall-app
     restart: unless-stopped
     ports:
-      - "8088:8088"  # 根据你的应用实际端口调整
+      - "8090:8089" #宿主8090 -> 容器 8089（避开goland的8089）
     environment:
       - TZ=Asia/Shanghai
-      - ETCD_ADDR=http://127.0.0.1:2379
-    working_dir: /data/wwwRoot
-    command: ["./edu.mall.backend"]
-    network_mode: "host"  # host模式
+    volumes:
+      - ./mall_docker.yml:/app/mall_local.yml:ro #配置只读挂进， 不烤进镜像
+    networks:
+      - mall-net
+networks:
+  mall-net:
+    external: true #复用建好的 已连上infra的那个
