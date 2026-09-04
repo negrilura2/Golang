@@ -1,31 +1,20 @@
-FROM golang:1.23 AS build
-
-# 设置Go环境
-RUN go env -w GO111MODULE=on
-RUN go env -w GOPROXY=https://goproxy.cn,direct
-
-ADD . /data/build/
-WORKDIR /data/build
-
-RUN go mod tidy -compat=1.23
-RUN CGO_ENABLED=0 GOOS=linux go build -o edu.mall.backend main.go
-
-RUN mkdir -p /data/wwwRoot/
-RUN pwd && ls -l
-RUN mv edu.mall.backend /data/wwwRoot/edu.mall.backend
-RUN chmod +x /data/wwwRoot/edu.mall.backend
-RUN rm -rf /data/build
-
-
-# golang mini runtime linux alpine
+#第一段 工地--只负责编译
+FROM golang:1.24 AS build
+RUN go env -w GO111MODULE=on  \
+    GOPROXY=https://goproxy.cn,direct
+WORKDIR /build
+#依赖先COPY + 下载， 命中缓存
+COPY go.mod go.sum ./
+RUN go mod download
+#再拷全部源码，编译
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o  edu.mall.backend main.go
+#第二段： 空房间 -- 只放产物
 FROM alpine:3.21
-
-RUN mkdir -p /data/wwwRoot/
-COPY --from=build /data/wwwRoot/edu.mall.backend /data/wwwRoot/edu.mall.backend
-
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-RUN apk update && apk add tzdata
-RUN echo 'Asia/Shanghai' >/etc/timezone
-RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-
-WORKDIR /data/wwwRoot
+RUN apk add --no-cache ca-certificates tzdata \
+    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" >/etc/timezone
+WORKDIR /app
+COPY --from=build /build/edu.mall.backend /app/edu.mall.backend
+EXPOSE 8089
+ENTRYPOINT ["/app/edu.mall.backend"]

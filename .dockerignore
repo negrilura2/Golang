@@ -1,0 +1,9 @@
+.git
+.idea
+*.exe
+report.html
+mall_local.yml
+.env
+*.log
+docker-compose.yml
+.cnb.yml
