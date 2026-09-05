@@ -59,21 +59,13 @@ type lesson struct {
 	VideoKey      field.String // 视频文件key
 	VideoFileName field.String
 	Duration      field.Int32  // 视频时长
-	Attachments   field.String // 课时课件文件列表[{"file_key": "", "file_name": "", "file_type": ""}]
-	/*
-		[{
-		  "id": "dddd",
-		   "name": "dddd",
-		   "begin_position": 1,
-		   "end_position": 1
-		}]
-	*/
-	Chapters field.String
-	Status   field.Int32 // 1：启用  -1：禁用
-	CreateAt field.Time
-	CreateBy field.Int64
-	UpdateAt field.Time
-	UpdateBy field.Int64
+	Attachments   field.String // 课时课件文件列表(JSON数组,每项含 file_key/file_name/file_type 字段)
+	Chapters      field.String // 课时章节(JSON数组,每项含 id/name/begin_position/end_position 字段)
+	Status        field.Int32  // 1：启用  -1：禁用
+	CreateAt      field.Time
+	CreateBy      field.Int64
+	UpdateAt      field.Time
+	UpdateBy      field.Int64
 
 	fieldMap map[string]field.Expr
 }
