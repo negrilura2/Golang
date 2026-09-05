@@ -55,7 +55,7 @@ func (s *Service) Start() {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	s.schedule.StartAsync() // 异步启动，不阻塞
 }
 
