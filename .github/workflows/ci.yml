@@ -1,0 +1,31 @@
+name: CI
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+jobs:
+  quality:
+    name: Go质量检查
+    runs-on: ubuntu-22.04
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+      - name: 安装Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: 静态检查
+        run: go vet ./...
+      - name: 跑单测
+        run: go test ./...
+      - name: 编译
+        run: go build ./...
