@@ -20,11 +20,18 @@ type App struct {
 	addr   string
 }
 
-func NewApp(port int, router IRouter) *App {
+func NewApp(port int, trustedProxies []string, router IRouter) *App {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
 	// Recover 中间件，全局捕获panic
 	engine.Use(gin.Recovery())
+	if len(trustedProxies) > 0 {
+		if err := engine.SetTrustedProxies(trustedProxies); err != nil {
+			log.Fatalf("invalid trusted_proxies %v: %v", trustedProxies, err)
+		}
+	} else {
+		_ = engine.SetTrustedProxies(nil)
+	}
 
 	engine.Use(RequestIDMiddleware())
 	// 日志中间件,自定义过滤器，某些接口不需要记录日志

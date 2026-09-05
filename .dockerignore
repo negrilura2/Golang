@@ -7,3 +7,4 @@ mall_local.yml
 *.log
 docker-compose.yml
 .cnb.yml
+deploy/certs

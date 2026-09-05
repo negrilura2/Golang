@@ -37,7 +37,7 @@ func AccessLogMiddleware(filter func(*gin.Context) bool) gin.HandlerFunc {
 		ctx.Request.Body = io.NopCloser(bytes.NewBuffer([]byte(body)))
 		begin := time.Now()
 		fields := []zap.Field{
-			zap.String("ip", ctx.RemoteIP()),
+			zap.String("ip", ctx.ClientIP()),
 			zap.String("method", ctx.Request.Method),
 			zap.String("path", ctx.Request.URL.Path),
 			zap.String("params", ctx.Request.URL.RawQuery),

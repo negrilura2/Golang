@@ -39,10 +39,11 @@ type Config struct {
 }
 
 type Server struct {
-	HttpPort    int    `yaml:"http_port"`
-	Env         string `yaml:"env"`
-	EnablePprof bool   `yaml:"enable_pprof"`
-	LogLevel    string `yaml:"log_level"`
+	HttpPort       int      `yaml:"http_port"`
+	Env            string   `yaml:"env"`
+	EnablePprof    bool     `yaml:"enable_pprof"`
+	LogLevel       string   `yaml:"log_level"`
+	TrustedProxies []string `yaml:"trusted_proxies"` //新增： 信任的反代来源，支持 CIDR
 }
 type Kafka struct {
 	Brokers []string `yaml:"brokers"`
@@ -317,5 +318,15 @@ func overrideFromEnv(c *Config) {
 		if b, err := strconv.ParseBool(v); err == nil {
 			c.Server.EnablePprof = b
 		}
+	}
+	if v := os.Getenv("MALL_SERVER_TRUSTED_PROXIES"); v != "" {
+		parts := strings.Split(v, ",")
+		proxies := make([]string, 0, len(parts))
+		for _, p := range parts {
+			if p = strings.TrimSpace(p); p != "" {
+				proxies = append(proxies, p)
+			}
+		}
+		c.Server.TrustedProxies = proxies
 	}
 }

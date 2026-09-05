@@ -38,7 +38,9 @@ func main() {
 
 func startServer(conf *config.Config, db *gorm.DB, redis *redis.Client) {
 	newAdaptor := adaptor.NewAdaptor(conf, db, redis)
-	app := router.NewApp(conf.Server.HttpPort,
+	app := router.NewApp(
+		conf.Server.HttpPort,
+		conf.Server.TrustedProxies,
 		router.NewRouter(
 			conf,
 			newAdaptor,

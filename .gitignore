@@ -1,6 +1,6 @@
 mall_local.yml
 mall_local.local.yml
-
+deploy/certs
 .env
 adaptor/repo/gen.yaml*
 *.exe
