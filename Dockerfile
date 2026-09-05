@@ -18,3 +18,5 @@ WORKDIR /app
 COPY --from=build /build/edu.mall.backend /app/edu.mall.backend
 EXPOSE 8089
 ENTRYPOINT ["/app/edu.mall.backend"]
+HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
+CMD wget -q -O /dev/null http://127.0.0.1:8089/ping || exit 1
