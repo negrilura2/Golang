@@ -1,7 +1,7 @@
 mall_local.yml
 mall_local.local.yml
-mall_docker.yml
 
 .env
 adaptor/repo/gen.yaml*
 *.exe
+.env.docker

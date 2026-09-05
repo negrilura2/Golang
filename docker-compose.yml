@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   nginx:
     image: docker.m.daocloud.io/library/nginx:1.27-alpine
@@ -20,8 +18,20 @@ services:
       restart: unless-stopped
       environment:
         - TZ=Asia/Shanghai
-      volumes:
-        - ./mall_docker.yml:/app/mall_local.yml:ro #配置只读挂进， 不烤进镜像
+        - MALL_SERVER_HTTP_PORT=8089
+        - MALL_SERVER_ENV=dev
+        - MALL_SERVER_LOG_LEVEL=debug
+        - MALL_MYSQL_HOST=my-mysql
+        - MALL_MYSQL_PORT=3306
+        - MALL_MYSQL_USER=root
+        - MALL_MYSQL_DATABASE=edu.mall
+        - MALL_MYSQL_SHOW_SQL=true
+        - MALL_REDIS_ADDR=redis-dev:6379
+        - MALL_REDIS_DB_INDEX=0
+        - MALL_KAFKA_BROKERS=kafka:29092
+        - MALL_SERVER_ENABLE_PPROF=true
+      env_file:
+        - .env.docker #密钥单独放，不入git
       networks:
         - mall-net
 networks:

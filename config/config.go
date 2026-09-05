@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -146,6 +147,12 @@ func InitConfig() *Config {
 		panic(err)
 	}
 	overrideFromEnv(tempConf)
+	if tempConf.Mysql.Host != "" && tempConf.Mysql.Charset == "" {
+		tempConf.Mysql.Charset = "utf8mb4"
+	}
+	if tempConf.Mysql.Host != "" && tempConf.Mysql.Dialect == "" {
+		tempConf.Mysql.Dialect = "mysql"
+	}
 	return tempConf
 }
 
@@ -181,18 +188,18 @@ func getFromRemoteAndWatchUpdate(v *viper.Viper) (*Config, error) {
 
 func getFromLocal() (*Config, error) {
 	tempConf := Config{}
-	if _, err := os.Stat(localConfigPath); err == nil {
-		content, err := os.ReadFile(localConfigPath)
-		if err != nil {
-			return nil, err
+	content, err := os.ReadFile(localConfigPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			//纯env模式，没配置文件很正常，交给环境变量填充
+			return &tempConf, nil
 		}
-		err = yaml.Unmarshal(content, &tempConf)
-		if err != nil {
-			return nil, err
-		}
-		return &tempConf, nil
+		return nil, err
 	}
-	return nil, fmt.Errorf("local config file not found ,file_name: %s", localConfigPath)
+	if err := yaml.Unmarshal(content, &tempConf); err != nil {
+		return nil, err
+	}
+	return &tempConf, nil
 }
 func (c *Config) Validate() []error {
 	var errs []error
@@ -231,6 +238,9 @@ func overrideFromEnv(c *Config) {
 	if v := os.Getenv("MALL_MOBILE_SECRET"); v != "" {
 		c.BizConf.MobileSecret = v
 	}
+	if v := os.Getenv("MALL_CAPTCHA_SECRET"); v != "" {
+		c.BizConf.CaptchaSecret = v
+	}
 	if v := os.Getenv("MALL_MYSQL_PASSWORD"); v != "" {
 		c.Mysql.Password = v
 	}
@@ -248,5 +258,64 @@ func overrideFromEnv(c *Config) {
 	}
 	if v := os.Getenv("MALL_STORAGE_SECRET_KEY"); v != "" {
 		c.Storage.SecretKey = v
+	}
+	if v := os.Getenv("MALL_SERVER_HTTP_PORT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			c.Server.HttpPort = n
+		}
+	}
+	if v := os.Getenv("MALL_SERVER_ENV"); v != "" {
+		c.Server.Env = v
+	}
+	if v := os.Getenv("MALL_SERVER_LOG_LEVEL"); v != "" {
+		c.Server.LogLevel = v
+	}
+	if v := os.Getenv("MALL_MYSQL_HOST"); v != "" {
+		c.Mysql.Host = v
+	}
+	if v := os.Getenv("MALL_MYSQL_PORT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			c.Mysql.Port = n
+		}
+	}
+	if v := os.Getenv("MALL_MYSQL_USER"); v != "" {
+		c.Mysql.User = v
+	}
+	if v := os.Getenv("MALL_MYSQL_PASSWORD"); v != "" {
+		c.Mysql.Password = v
+	}
+	if v := os.Getenv("MALL_MYSQL_DATABASE"); v != "" {
+		c.Mysql.Database = v
+	}
+	if v := os.Getenv("MALL_MYSQL_SHOW_SQL"); v != "" {
+		if n, err := strconv.ParseBool(v); err == nil {
+			c.Mysql.ShowSql = n
+		}
+	}
+	if v := os.Getenv("MALL_REDIS_ADDR"); v != "" {
+		c.Redis.Addr = v
+	}
+	if v := os.Getenv("MALL_REDIS_PASSWORD"); v != "" {
+		c.Redis.PWD = v
+	}
+	if v := os.Getenv("MALL_REDIS_DB_INDEX"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			c.Redis.DBIndex = n
+		}
+	}
+	if v := os.Getenv("MALL_KAFKA_BROKERS"); v != "" {
+		parts := strings.Split(v, ",")
+		brokers := make([]string, 0, len(parts))
+		for _, p := range parts {
+			if p = strings.TrimSpace(p); p != "" {
+				brokers = append(brokers, p)
+			}
+		}
+		c.Kafka.Brokers = brokers
+	}
+	if v := os.Getenv("MALL_SERVER_ENABLE_PPROF"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			c.Server.EnablePprof = b
+		}
 	}
 }
