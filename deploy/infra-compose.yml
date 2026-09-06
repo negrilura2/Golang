@@ -1,0 +1,54 @@
+name: mall-infra
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: my-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: edu.mall #首次启动自动建空库（表结构之后导入）
+      TZ: Asia/Shanghai
+    command:
+      - --performance-schema=OFF #省内存大招：关性能监控，立省200M
+      - --innodb-buffer-pool-size=128M #缓冲池保持默认128M，不再贪
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks: [mall-net]
+  redis:
+    image: redis:7
+    container_name: redis-dev
+    restart: unless-stopped
+    command: ["redis-server","--appendonly","no","--maxmemory","128mb","--maxmemory-policy","allkeys-lru"]
+    volumes:
+      - redis-data:/data
+    networks: [mall-net]
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+      KAFKA_LISTENERS: "OUTSIDE://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,INSIDE://0.0.0.0:29092"
+      KAFKA_ADVERTISED_LISTENERS: "OUTSIDE://localhost:9092,INSIDE://kafka:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,OUTSIDE:PLAINTEXT,INSIDE:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INSIDE"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx256m" #减肥核心： 默认堆1G 设为256M
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+    ports:
+      - "9092:9092" #仅服务器本机管理用；对外开不开=安全组说了算（不是端口映射说了算）
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks: [mall-net]
+volumes:
+  mysql-data:
+  redis-data:
+  kafka-data:
+networks:
+  mall-net:
+    external: true #先手动建好这张网

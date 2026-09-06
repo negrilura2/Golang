@@ -8,7 +8,7 @@ on:
       - master
   workflow_dispatch:
 concurrency:
-  group: ci-${{github.ref}} #当前分支名字 用ci-前缀分组。
+  group: ci-${{ github.ref }} #当前分支名字 用ci-前缀分组。
   cancel-in-progress: true #同组新run一来，旧的直接掐掉。
 jobs:
   quality:
