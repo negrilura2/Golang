@@ -67,3 +67,31 @@ jobs:
           tags: |
             ghcr.io/negrilura2/golang:sha-${{ github.sha }}
             ghcr.io/negrilura2/golang:latest
+  deploy:
+    name: 自动部署到云服务器
+    runs-on: ubuntu-22.04
+    needs: build-push #镜像先到ghcr,才上服务器拉，绝不抢先
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') #PR/分支不部署
+    steps:
+      - name: SSH上线+探活
+        uses: appleboy/ssh-action@v1 #社区常用SSH部署action
+        with:
+          host: 43.138.82.249
+          username: ubuntu
+          key: ${{ secrets.SERVER_SSH_KEY }} #上一步存的专属部署私钥在GitHub上
+          script_timeout: 5m
+          script: |
+            set -e
+            cd ~/Golang-
+            git pull
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            # 探活：最多10次，等app真正健康（up只保证进程起来，不一定马上能吃流量）
+            code=000
+            for i in $(seq 1 10); do
+              code=$(curl -k -s -o /dev/null -w "%{http_code}" https://127.0.0.1/ping) || true
+              echo "第${i}次探活: $code"
+              if [ "$code" = "200" ]; then break; fi
+              sleep 3
+            done
+            test "$code" = "200" #不健康就整条CI标红
