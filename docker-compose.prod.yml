@@ -19,7 +19,7 @@ services:
     networks:
       - mall-net
   edu-mall-app:
-    image: edu-mall:local #只用现成镜像，不写build
+    image: ghcr.io/negrilura2/golang:${MALL_IMAGE_TAG:-latest} #只用现成镜像，不写build 从ghcr拉：MALL_IMAGE_TAG没设就latest(回滚时指定sha-xxx)
     container_name: edu-mall-app
     restart: unless-stopped
     environment:
