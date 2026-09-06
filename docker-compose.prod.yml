@@ -1,0 +1,46 @@
+# 生产版编排： 服务器只跑现成镜像， 绝不现场构建
+# 用法： docker compose -f dokcer-compose.prod.yml up -d
+# 与开发版（docker-compose.yml)的差别，见注释
+
+services:
+  nginx:
+    image: docker.m.daocloud.io/library/nginx:1.27-alpine
+    container_name: mall-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80" # 公网入口：80收到后 301 跳 https
+      - "443:443" # 加密入口
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro
+    depends_on:
+      edu-mall-app:
+        condition: service_healthy
+    networks:
+      - mall-net
+  edu-mall-app:
+    image: edu-mall:local #只用现成镜像，不写build
+    container_name: edu-mall-app
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - MALL_SERVER_HTTP_PORT=8089
+      - MALL_SERVER_ENV=prod #生产模式
+      - MALL_SERVER_LOG_LEVEL=info #debug太吵，生产看info
+      - MALL_MYSQL_HOST=my-mysql
+      - MALL_MYSQL_PORT=3306
+      - MALL_MYSQL_USER=root
+      - MALL_MYSQL_DATABASE=edu.mall
+      - MALL_MYSQL_SHOW_SQL=false #每条SQL语句都打印=生产日志灾难
+      - MALL_REDIS_ADDR=redis-dev:6379
+      - MALL_REDIS_DB_INDEX=0
+      - MALL_KAFKA_BROKERS=kafka:29092
+      - MALL_SERVER_ENABLE_PPROF=false #pprof是调试后门，生产关
+      - MALL_SERVER_TRUSTED_PROXIES=172.18.0.0/16 #只信nginx所在的网，假XXF挡门外
+    env_file:
+      - .env.docker #密钥不入git,服务器上手动建
+    networks:
+      - mall-net
+networks:
+  mall-net:
+    external: true

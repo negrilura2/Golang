@@ -5,3 +5,5 @@ deploy/certs
 adaptor/repo/gen.yaml*
 *.exe
 .env.docker
+*.sql
+*.tar
