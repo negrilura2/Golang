@@ -47,7 +47,7 @@ func (r *Router) checkServer() func(*gin.Context) {
 			})
 			return
 		}
-		ctx.JSON(http.StatusOK, gin.H{"status": "ok", "build": "e2e-demo"})
+		ctx.JSON(http.StatusOK, gin.H{"status": "ok", "build": "e2e-demo-rev-parse"})
 	}
 }
 
